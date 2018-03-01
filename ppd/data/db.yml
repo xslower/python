@@ -1,0 +1,5 @@
+host: rm-uf6tz1g9l077nkd0do.mysql.rds.aliyuncs.com
+port: 3306
+user: rdsroot
+password: yinnuo123!@#
+database: lab
