@@ -26,30 +26,30 @@ class url:
     HOST = 'http://songwf.top/'
     AUTH = "https://ac.ppdai.com/oauth2/login?"
     # 投标接口
-    buy_bid = 'http://gw.open.ppdai.com/invest/BidService/Bidding'
+    buy_bid = 'https://openapi.ppdai.com/invest/BidService/Bidding'
     # 可投列表
-    loan_list = 'http://gw.open.ppdai.com/invest/LLoanInfoService/LoanList'
+    loan_list = 'https://openapi.ppdai.com/invest/LLoanInfoService/LoanList'
     # 借款信息
-    loan_info = 'http://gw.open.ppdai.com/invest/LLoanInfoService/BatchListingInfos'
+    loan_info = 'https://openapi.ppdai.com/invest/LLoanInfoService/BatchListingInfos'
     # 貌似是某些标的投资人列表
-    lender_list = 'http://gw.open.ppdai.com/invest/LLoanInfoService/BatchListingBidInfos'
+    lender_list = 'https://openapi.ppdai.com/invest/LLoanInfoService/BatchListingBidInfos'
     # 标是否已满
-    bid_status = 'http://gw.open.ppdai.com/invest/LLoanInfoService/BatchListingStatusInfos'
+    bid_status = 'https://openapi.ppdai.com/invest/LLoanInfoService/BatchListingStatusInfos'
 
     # 购买债权
-    buy_debt = 'http://gw.open.ppdai.com/invest/BidService/BuyDebt'
+    buy_debt = 'https://openapi.ppdai.com/invest/BidService/BuyDebt'
     # 债权列表
-    debt_list = 'http://gw.open.ppdai.com/invest/LLoanInfoService/DebtListNew'
+    debt_list = 'https://openapi.ppdai.com/invest/LLoanInfoService/DebtListNew'
     # 债权转让信息
-    debt_info = 'http://gw.open.ppdai.com/invest/LLoanInfoService/BatchDebtInfos'
+    debt_info = 'https://openapi.ppdai.com/invest/LLoanInfoService/BatchDebtInfos'
     # 用户投标记录
-    u_bid_list = 'http://gw.open.ppdai.com/invest/BidService/BidList'
+    u_bid_list = 'https://openapi.ppdai.com/invest/BidService/BidList'
     # 批量获取标的详细信息
-    bid_info = 'http://gw.open.ppdai.com/invest/LLoanInfoService/BatchListingInfos'
+    bid_info = 'https://openapi.ppdai.com/invest/LLoanInfoService/BatchListingInfos'
     # 还款情况
-    repay = 'http://gw.open.ppdai.com/invest/RepaymentService/FetchLenderRepayment'
+    repay = 'https://openapi.ppdai.com/invest/RepaymentService/FetchLenderRepayment'
     # 账户余额
-    left = 'http://gw.open.ppdai.com/balance/balanceService/QueryBalance'
+    left = 'https://openapi.ppdai.com/balance/balanceService/QueryBalance'
 
     @staticmethod
     def auth():

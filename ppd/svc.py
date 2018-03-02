@@ -70,22 +70,25 @@ def class_label(status, overDays):
     repayOverRate = 98
     y = 0
     od = overDays
-    if status < repayOverRate:
-        # 产生了坏账式逾期则作为负样本
-        if od > 30:
-            y = 3
-        elif od > 10:
-            y = 2
-        else:
-            y = -1
-    else:  # 基本还完, 但曾经逾期太久的也作为负样本
-        if od > 30:
-            y = 3
-        elif od > 10:
-            y = 2
-        elif od > 0:
-            y = 1
+    if od > 0:
+        y = 1
     return y
+    # if status < repayOverRate:
+    #     # 产生了坏账式逾期则作为负样本
+    #     if od > 30:
+    #         y = 3
+    #     elif od > 10:
+    #         y = 2
+    #     else:
+    #         y = -1
+    # else:  # 基本还完, 但曾经逾期太久的也作为负样本
+    #     if od > 30:
+    #         y = 3
+    #     elif od > 10:
+    #         y = 2
+    #     elif od > 0:
+    #         y = 1
+    # return y
 
 def regress_label(status, overDays):
     repayOverRate = 98

@@ -9,6 +9,7 @@ page_limit = 10
 def get_bid_list(token, start, end, idx):
     data = {'StartTime': time_plus.std_date(start), 'EndTime': time_plus.std_date(end), 'PageIndex': idx, 'PageSize': page_limit}
     ret = pcli.send(url.u_bid_list, data, token)
+    # print(ret)
     max_page = ret['TotalPages']
     bl = []
     key = 'BidList'
@@ -218,19 +219,20 @@ def test():
     info = left_amount(tk)
 
 
+# 债权还款信息合并到update_repay里了
 def update_debt():
     with open('data/debt_list.json', 'r') as f:
         debt_list = json.load(f)
-    # ln = len(debt_list) // 10
-    # for i in range(0, ln, 1):
-    #     start = i * 10
-    #     end = min(start + 10, len(debt_list))
-    #     ids = debt_list[start:end]
-    #     print(ids)
-    #     bids = get_bid_info(ids)
-    #     if len(bids) > 0:
-    #         p_bids_real.multi_insert(*bids)
-    # p_bids_real.where().in_(k_list_id, *debt_list).update(bidType=2, openId=xslower_id)
+    ln = len(debt_list) // 10
+    for i in range(0, ln, 1):
+        start = i * 10
+        end = min(start + 10, len(debt_list))
+        ids = debt_list[start:end]
+        print(ids)
+        bids = get_bid_info(ids)
+        if len(bids) > 0:
+            p_bids_real.multi_insert(*bids)
+    p_bids_real.where().in_(k_list_id, *debt_list).update(bidType=2, openId=xslower_id)
 
 
 
@@ -258,8 +260,8 @@ def update_all():
 
 if __name__ == '__main__':
     # update_debt()
-    # update_all()
-    config.reload_token()
+    update_all()
+    # config.reload_token()
 """
 todo 
 1.仔细研究下数据归一化，非常重要
