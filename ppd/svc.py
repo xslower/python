@@ -6,6 +6,7 @@
 
 import yaml
 from header import *
+from sklearn.decomposition import PCA
 import api_op as api
 import utilities as util
 
@@ -44,9 +45,9 @@ def objToX(bid):
 
         bid.certificateValidate, bid.nciicIdentityCheck, bid.phoneValidate, bid.videoValidate, bid.creditValidate, bid.educateValidate,
 
-        bid.months, bid.gender, word2int.edu_val(bid.educationDegree), word2int.study_val(bid.studyStyle), bid.age, bid.currentRate]
+        bid.months, bid.gender, word2int.edu_val(bid.educationDegree), word2int.study_val(bid.studyStyle), bid.age]
 
-    for i in range(0, len(row)):
+    for i in range(len(row)):
         if row[i] is None:
             row[i] = 0
     return row
@@ -59,49 +60,35 @@ def dicToX(info):
 
         info['CertificateValidate'], info['NciicIdentityCheck'], info['PhoneValidate'], info['VideoValidate'], info['CreditValidate'], info['EducateValidate'],
 
-        info['Months'], info['Gender'], word2int.edu_val(info['EducationDegree']), word2int.study_val(info['StudyStyle']), info['Age'], info['CurrentRate']]
+        info['Months'], info['Gender'], word2int.edu_val(info['EducationDegree']), word2int.study_val(info['StudyStyle']), info['Age']]
 
     for i in range(0, len(row)):
         if row[i] is None:
             row[i] = 0
     return row
 
+num_class = 3
+repayOverRate = 98
+
+
 def class_label(status, overDays):
-    repayOverRate = 98
     y = 0
     od = overDays
-    if od > 0:
-        y = 1
-    return y
-    # if status < repayOverRate:
-    #     # 产生了坏账式逾期则作为负样本
-    #     if od > 30:
-    #         y = 3
-    #     elif od > 10:
-    #         y = 2
-    #     else:
-    #         y = -1
-    # else:  # 基本还完, 但曾经逾期太久的也作为负样本
-    #     if od > 30:
-    #         y = 3
-    #     elif od > 10:
-    #         y = 2
-    #     elif od > 0:
-    #         y = 1
-    # return y
-
-def regress_label(status, overDays):
-    repayOverRate = 98
-    y = overDays
     if status < repayOverRate:
-        if y < 5:
-            return -1
-        y += 5
-    if y > 30:
-        y = 30
+        # 产生了坏账式逾期则作为负样本
+        if od > 20:
+            y = 2
+        else:
+            # 未还完、也未产生坏账式逾期的标，不能作为样本
+            y = -1
+    else:  # 基本还完, 但曾经逾期太久的也作为负样本
+        if od > 30:
+            y = 2
+        elif od > 0:
+            y = 1
     return y
 
-num_class = 4
+
 def init_data(code = None):
     dx = []
     dy = []
@@ -116,8 +103,7 @@ def init_data(code = None):
         if bid.overdueDays is None or bid.repayStatus is None or bid.creditCode is None or len(bid.creditCode) > 1:
             continue
         od = bid.overdueDays
-        # 未还完、也未产生坏账式逾期的标，不能作为样本
-        y = regress_label(bid.repayStatus, od)
+        y = class_label(bid.repayStatus, od)
         if y < 0:
             continue
         dy.append(y)
@@ -154,27 +140,30 @@ def train_test_split(dx, dy, rate = 9):
 
 class my_svc(object):
     scaler = None
+    pca = None
     clf_list = None
 
     def __init__(self):
         self.scaler = preprocessing.StandardScaler()
+        self.pca = PCA(n_components='mle', svd_solver='full')
         self.clf_list = []
 
     def train(self, x, y, weight = None):
         self.scaler.fit(x)
         x_norm = self.scaler.transform(x)
+        self.pca.fit(x_norm)
+        x_norm = self.pca.transform(x_norm)
 
         if weight is None:
-            weight = {1: 20, 2: 30, 3: 40}
+            weight = {1: 4, 2: 60}
         rbf = svm.SVC(class_weight=weight)
-        # self.clf_list.append(rbf)
         linear = svm.SVC(kernel='linear', class_weight=weight)
-        # self.clf_list.append(linear)
         poly = svm.SVC(kernel='poly', degree=3, class_weight=weight)
-        # self.clf_list.append(poly)
         # clf_sigmoid = svm.SVC(kernel='sigmoid', class_weight=weight)
-        r = svm.SVR()
-        self.clf_list.append(r)
+        # self.clf_list.append(rbf)
+        self.clf_list.append(linear)
+        # self.clf_list.append(poly)
+
 
         for clf in self.clf_list:
             clf.fit(x_norm, y)
@@ -182,6 +171,7 @@ class my_svc(object):
     # 做预测，多个模型结果合并。任一预测=1则最终=1，即对1的预测进行交集
     def predict(self, x):
         x_norm = self.scaler.transform(x)
+        x_norm = self.pca.transform(x_norm)
         y_pred = None
         for clf in self.clf_list:
             y_ = clf.predict(x_norm)
@@ -193,52 +183,40 @@ class my_svc(object):
         return y_pred
 
     def evaluate(self, x_test, y_test):
-        x_test = self.scaler.transform(x_test)
+        x_norm = self.scaler.transform(x_test)
+        x_norm = self.pca.transform(x_norm)
         for clf in self.clf_list:
-            y_pred = clf.predict(x_test)
-            precise_regress(y_test, y_pred)
+            y_pred = clf.predict(x_norm)
+            precise(y_test, y_pred)
 
-def precise_regress(y, y_pred):
-    z_max = 0.047
-    z_min = 0.045
-    cnt = [0,0]
-    for i in y:
-        if y[i] == 0:
-            cnt[1] += 1
-            if z_min < y_pred[i] < z_max:
-                cnt[0] += 1
-            else:
-                log.info([y[i], y_pred[i]])
-        else:
-            # if z_min < y_pred[i] < z_max:
-            log.info([y[i], y_pred[i]])
-    log.info(cnt)
-    # log.info(y)
-    # log.info(y_pred)
-
-def precise(y, y_pred, num_class = 2):
+def precise(y, y_pred):
     cnt = []
     for i in range(num_class):
-        cnt.append([0, 0])
-    for i in range(0, len(y_pred)):
+        li = []
+        for j in range(num_class + 1):
+            li.append(0)
+        cnt.append(li)
+    for i in range(len(y)):
         idx = y[i]
         # print(idx, cnt, num_class)
-        cnt[idx][1] += 1
-        if y_pred[i] == y[i]:
-            cnt[idx][0] += 1
+        cnt[idx][num_class] += 1
+        cnt[idx][y_pred[i]] += 1
     log.info(cnt)
-    for i in range(num_class):
-        log.info(cnt[i][0] / cnt[i][1] * 100)
+    val = cnt[0][0]
+    if val == 0:
+        val = 1
+    for i in range(1, num_class):
+        log.info(cnt[i][0] / val * 100)
 
 
 def main():
     log.basicConfig(stream=sys.stdout, level=log.INFO, format='%(message)s')
     dx, dy = init_data()
-    x_train, x_test, y_train, y_test = train_test_split(dx, dy, 8)
+    x_train, x_test, y_train, y_test = train_test_split(dx, dy, 10)
     svc = my_svc()
     svc.train(x_train, y_train)
-    svc.evaluate(x_test, y_test)
-    # svc.evaluate(dx[-700:], dy[-700:])
+    # svc.evaluate(x_test, y_test)
+    svc.evaluate(dx[-700:], dy[-700:])
 
 
 if __name__ == '__main__':

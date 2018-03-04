@@ -18,9 +18,12 @@ tf.where(tf.greater(x, y), x, y)
 数据处理：
 """
 x = tensor = tf.Variable()
+y = y_label = tf.Variable()
+inputs = tf.Variable()
 weights = tf.Variable()
 bias = tf.Variable()
 
+tf.argmax(y_label, axis=1)  # y_label是2维的，axis是操作哪一维。[[0,1,0],[1,0,0],[0,0,1]->[1,0,2]
 tf.expand_dims(tensor, 1)  # 把一个tensor扩充一维，例如[1,2,3]->[[1],[2],[3]] -> [[[1]],[[2]],[[3]]]。后面的参数不能随意取
 
 tf.range(0, 10, 0)  # 跟python 的range一样生成一个0到9的list
@@ -43,12 +46,24 @@ array_ops.split(tensor, num_or_size_splits=2, axis=0)  # 把tensor延axis方向�
 array_ops.concat(tensor, axis=1)  # 把tensor里的张量延方向合并。例：([[1,2,3],[4,5,6]],[[3,2,1],[6,5,4]])，延0合并=[[1,2,3],[4,5,6],[3,2,1],[6,5,4]]，延1合并=[[1,2,3,3,2,1],[4,5,6,6,5,4]]。tf里经常延1合并，是在每一个batch上合并成一个长向量。
 
 from tensorflow.python.util import nest
-nest.flatten(x) # 内部用递归的方式把N维输入，转为1维的list输出
-nest.is_sequence(x) # isinstance(x, collections.Sequence) 1维以上的数组都=True
+
+nest.flatten(x)  # 内部用递归的方式把N维输入，转为1维的list输出
+nest.is_sequence(x)  # isinstance(x, collections.Sequence) 1维以上的数组都=True
 
 """
 训练、建模：
 """
+# 损失函数：
+tf.nn.sigmoid_cross_entropy_with_logits(labels=y_label, logits=y)
+# 这个主要是面向2分类的
+
+tf.nn.softmax_cross_entropy_with_logits(labels=y_label, logits=y)
+# labels和logits必须是相同的shape
+
+tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.argmax(y_label, 1), logits=y)
+# 与上面不同。估计是为了维数多时方便接收数据的。
+# labels必须比logits少一维。一般为[0,1,2,1]每一位表示一个样本的类别
+# logits则是计算出来的输出。一般为[[1,0,0],[0,1,0],[0,0,1],[0,1,0]]。
 
 class _LoggerHook:
     pass
@@ -63,10 +78,10 @@ tf.nn.embedding_lookup(tensor, ids=[1, 2, 3])  # 这是根据ids里的索引idx�
 tf.nn.nce_loss(weights=x, biases=y, labels=y, inputs=x, num_sampled=10, num_classes=50000)  # cbow和skip-gram训练时打包的一个损失函数(目标函数)，详见word2vec理解
 
 # cnn相关：
-inputs = tf.Variable()
 # 卷积层
 tf.nn.conv2d(inputs, weights, strides=[1, 2, 2, 1], padding='SAME')  # stride=在input各个纬度上的步长，[不同的样本, 宽, 高, 深]，第一纬为不同的样本，步长只能=1，最后一纬=深度，也只能=1
 # 池化层
+tf.nn.max_pool(inputs, ksize=[1, 1, 1, 1], strides=[1, 2, 2, 1], padding='SAME')  # 其它参数同上，ksize的格式很奇葩与stride相同[1,2,2,1]。[不同的样本, 宽, 高, 深]
 tf.nn.max_pool(inputs, ksize=[1, 1, 1, 1], strides=[1, 2, 2, 1], padding='SAME')  # 其它参数同上，ksize的格式很奇葩与stride相同[1,2,2,1]。[不同的样本, 宽, 高, 深]
 
 """
@@ -105,8 +120,8 @@ cell = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=3, num_units=90, input_size=95)
 
 # rnn打包。上面只是定义了网络，但是rnn调用时并不是直入直出的，而是按照顺序挨个输入Xi，同时输入X(i-1)的state，计算后输出Yi。最后把1-n的Yi打包在一起形成最终输出。
 # 下面就是自动挨个调用rnn_cell的打包方法。
-outputs1, final_states1 = tf.nn.static_rnn(cell, inputs, initial_state=last_state) #
-outputs2, final_states2 = tf.nn.dynamic_rnn(cell, inputs, initial_state=last_state) # 跟static的区别貌似是接收的inputs形状不同，static接收的必须是相同batch_size的输入，而dynamic可以不同。
+outputs1, final_states1 = tf.nn.static_rnn(cell, inputs, initial_state=last_state)  #
+outputs2, final_states2 = tf.nn.dynamic_rnn(cell, inputs, initial_state=last_state)  # 跟static的区别貌似是接收的inputs形状不同，static接收的必须是相同batch_size的输入，而dynamic可以不同。
 
 """
 tensorboard使用:
