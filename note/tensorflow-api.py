@@ -1,7 +1,8 @@
-'''
+"""
 tensorflow api文档理解+记录:
 ps: 感觉还是把代码相关的东西写在代码里方便
-'''
+"""
+
 import tensorflow as tf
 
 # 逻辑op：
@@ -23,8 +24,12 @@ inputs = tf.Variable()
 weights = tf.Variable()
 bias = tf.Variable()
 
+tf.assign(x, y) # 把y赋值给x
+
 tf.argmax(y_label, axis=1)  # y_label是2维的，axis是操作哪一维。[[0,1,0],[1,0,0],[0,0,1]->[1,0,2]
 tf.expand_dims(tensor, 1)  # 把一个tensor扩充一维，例如[1,2,3]->[[1],[2],[3]] -> [[[1]],[[2]],[[3]]]。后面的参数不能随意取
+tf.squeeze(x) # 去掉长度=1的那些纬度，例：tf.shape(t) = [1,2,1,3,1,1] tf.shape(tf.squeeze(t))=[2,3]
+
 
 tf.range(0, 10, 0)  # 跟python 的range一样生成一个0到9的list
 tf.concat([x, y], 1)  # 把两个同rank的tensor合并到一起，[[0],[1]] + [[2],[3]] = [[0,2],[1,3]]
@@ -77,16 +82,13 @@ tf.train.MonitoredTrainingSession(checkpoint_dir='dir', hooks=[_LoggerHook()], c
 tf.nn.embedding_lookup(tensor, ids=[1, 2, 3])  # 这是根据ids里的索引idx，获取params里相应索引的值，
 tf.nn.nce_loss(weights=x, biases=y, labels=y, inputs=x, num_sampled=10, num_classes=50000)  # cbow和skip-gram训练时打包的一个损失函数(目标函数)，详见word2vec理解
 
-# cnn相关：
+""" cnn相关："""
 # 卷积层
 tf.nn.conv2d(inputs, weights, strides=[1, 2, 2, 1], padding='SAME')  # stride=在input各个纬度上的步长，[不同的样本, 宽, 高, 深]，第一纬为不同的样本，步长只能=1，最后一纬=深度，也只能=1
 # 池化层
 tf.nn.max_pool(inputs, ksize=[1, 1, 1, 1], strides=[1, 2, 2, 1], padding='SAME')  # 其它参数同上，ksize的格式很奇葩与stride相同[1,2,2,1]。[不同的样本, 宽, 高, 深]
-tf.nn.max_pool(inputs, ksize=[1, 1, 1, 1], strides=[1, 2, 2, 1], padding='SAME')  # 其它参数同上，ksize的格式很奇葩与stride相同[1,2,2,1]。[不同的样本, 宽, 高, 深]
 
-"""
-rnn相关：
-"""
+"""rnn相关："""
 last_state = tf.Variable()
 tf.nn.rnn_cell.RNNCell()  # rnn的抽象类
 

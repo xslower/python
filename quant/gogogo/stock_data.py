@@ -42,38 +42,51 @@ def fetch_m_data(id):
             df.to_csv(file, header=None, mode='a')
 
 
+# 从csv文件中读取数据，有可能需要多只股票合并使用，所以不能去掉时间
 def load_file(id, no_stop = False):
     file = 'data/stock/%s.csv'
     csv_file = open(file % id, 'r')
     iter = csv.reader(csv_file)
     trade_data = []
+    last_close = 0
     for li in iter:
         if li[0] == '':
             continue
         # 去掉停盘数据
-        if no_stop and li[1] == li[2] == 0:
+        if no_stop and li[5] == 0:
             continue
         for i in range(1, len(li)):
             if li[i] == '':
                 li[i] = 0
             else:
                 li[i] = float(li[i])
-        trade_data.append(li)
+        today_close = li[2]
+        li[7] = (today_close - last_close) / last_close * 100
+        last_close = today_close
+        trade_data.append(li[:8])
     # print(trade_data[:10], trade_data[-10:])
     csv_file.close()
     return trade_data
 
 
-def parse_y(yester, today):
-    up = (today[2] - today[1]) / today[1] * 100
-    y = int(up / 2) + 5
-    if y < 0:
-        y = 0
-    elif y > 9:
-        y = 9
+def parse_y(x):
+    x_len = 300
+    y_len = 50
+    y = [0] * len(x)
+    if len(x) < x_len + y_len:
+        return y
+    for i in range(x_len, len(x) - y_len):
+        acc_up = 0
+        max_up = 0
+        for j in range(1, y_len):
+            acc_up += x[7]
+            if abs(acc_up) > abs(max_up):
+                max_abs = acc_up
+        y[i] = max_up
     return y
 
 
+#
 def prepare_single(stock_id):
     xd = load_file(stock_id, True)
     y = [0] * len(xd)

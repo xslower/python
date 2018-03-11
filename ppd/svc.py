@@ -61,7 +61,7 @@ def dicToX(info):
         info['CertificateValidate'], info['NciicIdentityCheck'], info['PhoneValidate'], info['VideoValidate'], info['CreditValidate'], info['EducateValidate'],
 
         info['Months'], info['Gender'], word2int.edu_val(info['EducationDegree']), word2int.study_val(info['StudyStyle']), info['Age']]
-
+    # info['CurrentRate']
     for i in range(0, len(row)):
         if row[i] is None:
             row[i] = 0
@@ -155,7 +155,7 @@ class my_svc(object):
         x_norm = self.pca.transform(x_norm)
 
         if weight is None:
-            weight = {1: 4, 2: 60}
+            weight = {1: 4, 2: 50}
         rbf = svm.SVC(class_weight=weight)
         linear = svm.SVC(kernel='linear', class_weight=weight)
         poly = svm.SVC(kernel='poly', degree=3, class_weight=weight)
@@ -179,7 +179,8 @@ class my_svc(object):
                 y_pred = y_
             else:
                 for i in range(len(y_pred)):
-                    y_pred[i] |= y_[i]
+                    if y_pred < y_[i]:
+                        y_pred[i] = y_[i]
         return y_pred
 
     def evaluate(self, x_test, y_test):
@@ -212,11 +213,12 @@ def precise(y, y_pred):
 def main():
     log.basicConfig(stream=sys.stdout, level=log.INFO, format='%(message)s')
     dx, dy = init_data()
-    x_train, x_test, y_train, y_test = train_test_split(dx, dy, 10)
+    x_train, x_test, y_train, y_test = train_test_split(dx, dy, 9)
     svc = my_svc()
     svc.train(x_train, y_train)
-    # svc.evaluate(x_test, y_test)
-    svc.evaluate(dx[-700:], dy[-700:])
+    svc.evaluate(x_test, y_test)
+    # start = -800
+    # svc.evaluate(dx[start:], dy[start:])
 
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 # coding=utf-8
-import sys,os
+import sys, os
 
 sys.path.append('../lib')
 
@@ -63,13 +63,17 @@ niude_id = '3695a8a3008342e18752b0e3da66bc99'  # niude
 
 
 class config:
-    bid_amount = 55
+    bid_amount = 54
     open_ids = [xslower_id]
     users = []
     stand_by_users = []
     tokens = []
+    bid_count = 0
+    bid_count_limit = 10000
+    wait_time = 1800
     # scaler = preprocessing.StandardScaler()
     svc = None
+
     @classmethod
     def init(cls):
         for uid in cls.open_ids:
@@ -78,8 +82,8 @@ class config:
                 raise Exception('open_id failed: ' + uid)
             u.tk = u.access_token
             cls.users.append(u)
-        # if cls.scaler is None:
-        #     cls.scaler = preprocessing.StandardScaler()
+            # if cls.scaler is None:
+            #     cls.scaler = preprocessing.StandardScaler()
 
     @classmethod
     def refresh_token(cls):
@@ -135,9 +139,21 @@ class config:
         if need_refresh:
             cls.refresh_token()
 
+    # @classmethod
+    # def add_bid_count(cls):
+    #     cls.bid_count += 1
+    #
+    # @classmethod
+    # def limit_bid(cls):
+    #     if cls.bid_count > cls.bid_count_limit:
+    #         log.info('sleeping~')
+    #         time.sleep(cls.wait_time)
+    #         cls.bid_count = 0
+
+
 def save_pid(pre):
     pid = os.getpid()
-    f = open('log/pid-'+pre, 'w')
+    f = open('log/pid-' + pre, 'w')
     f.write(str(pid))
     f.close()
 
@@ -154,10 +170,11 @@ def get_list_vals(rows, key):
         vals.append(row[key])
     return vals
 
+
 def get_not_aa_vals(rows, key):
     vals = []
     for row in rows:
-        if len(row['CreditCode']) > 1: #AA or AAA
+        if len(row['CreditCode']) > 1:  # AA or AAA
             continue
         vals.append(row[key])
     return vals

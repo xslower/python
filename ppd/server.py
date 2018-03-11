@@ -9,6 +9,7 @@ import api_op as api
 _key = 'Result'
 _msg = 'ResultMessage'
 
+
 def try_buy_bid(list_id, amount):
     succ = False
     for i in range(len(config.users)):
@@ -69,7 +70,7 @@ def buy_debts(debt_ids):
     return succ, fail
 
 
-def buy_any(ids, amount=config.bid_amount, debt=False):
+def buy_any(ids, amount = config.bid_amount, debt = False):
     if debt:
         return buy_debts(ids)
     else:
@@ -113,53 +114,8 @@ def _merge_bid(binfo, bids):
     return binfo
 
 
-# def deal_loan(binfo, succ_list, fail_list, bad_list):
-#     data_x = []
-#     ids = []
-#     for dic in binfo:
-#         _id = dic[api.k_list_id]
-#         if dic['CreditCode'] == 'AA':
-#             if dic['CurrentRate'] >= 10:
-#                 succ = try_buy_bid(_id, 200)
-#                 if succ:
-#                     succ_list.append(_id)
-#                 else:
-#                     fail_list.append(_id)
-#             # 利率低于10的AA不投
-#             continue
-#         row = dicToX(dic)
-#         data_x.append(row)
-#         ids.append(_id)
-#     if len(data_x) == 0:
-#         return
-#     log.info('before prediect. ids: %s', ids)
-#     norm_x = config.scaler.transform(data_x)
-#     pd_y = []
-#     for clf in config.clfs:
-#         y = clf.predict(norm_x)
-#         pd_y.append(y)
-#     good_list = []
-#     # 合并多种预测的结果，任何一个预测危险都不投
-#     for i in range(len(norm_x)):
-#         is_bad = False
-#         for j in range(len(config.clfs)):
-#             if pd_y[j][i] == 1:
-#                 is_bad = True
-#                 break
-#         if is_bad:
-#             bad_list.append(ids[i])
-#         else:
-#             good_list.append(ids[i])
-#     succ, fail = buy_bids(good_list)
-#     succ_list.extend(succ)
-#     fail_list.extend(fail)
-
-
 def fetch_loan_list():
     bid_info_list = []
-    succ_list = []
-    fail_list = []
-    bad_list = []
     page = 1
     while True:
         bids = api.get_loan_list(page)
@@ -167,12 +123,12 @@ def fetch_loan_list():
             return
         # p_loan_list.multi_insert(*bids)
         ids = get_not_aa_vals(bids, k_list_id)
-        log.info('ids %s', ids)
+        # log.info('ids %s', ids)
         if len(ids) == 0:
             return
         if len(ids) <= 10:
             binfo = api.get_bid_info(ids)
-            predict_bid(binfo, succ_list, fail_list, bad_list)
+            predict_bid(binfo)
             binfo = _merge_bid(binfo, bids)
             bid_info_list.extend(binfo)
             break
@@ -188,13 +144,12 @@ def fetch_loan_list():
                 binfo = api.get_bid_info(ids[start:end])
                 if binfo is None or len(binfo) == 0:
                     continue
-                predict_bid(binfo, succ_list, fail_list, bad_list)
+                predict_bid(binfo)
                 binfo = _merge_bid(binfo, bids)
                 bid_info_list.extend(binfo)
         if len(bids) < 20:
             break
         page += 1
-    update_bid_db(bid_info_list, succ_list, fail_list, bad_list, field='listingId', mod=p_bids_avail)
 
 
 # def deal_debt(binfo, succ_list, fail_list, bad_list):
@@ -265,7 +220,7 @@ def filter_debt(debt):
         ought_rate += (15 - days) ** 2 * 0.011
 
     # 限额根据利率优惠的幅度上下调整
-    limit = cc.limit[cur_code] #* (1 + (sale_rate - ought_rate) / 10)
+    limit = cc.limit[cur_code]  # * (1 + (sale_rate - ought_rate) / 10)
 
     # 利率让利超过一定限额，且金额较小，则直接购买不走模型。目的就是买数据
     # if sale_rate > ought_rate + cc.want_rate['pre_buy'] and \
@@ -291,9 +246,6 @@ def filter_debt(debt):
 
 def fetch_debt_list():
     bid_info_list = []
-    succ_list = []
-    fail_list = []
-    bad_list = []
     page = 1
     stamp = time.time()
     start_time = time_plus.std_datetime(stamp - decay.span())
@@ -342,7 +294,7 @@ def fetch_debt_list():
                 bid[k_debt_id] = lid2did[bid[k_list_id]]
                 # bid[k_rate] = bid[k_current_rate]
                 # bid[k_current_rate] =
-            predict_bid(bid_info, succ_list, fail_list, bad_list, True)
+            predict_bid(bid_info, True)
             bid_info_list.extend(bid_info)
 
         log.info('page:%d debt len %d', page, len(debt_info_list))
@@ -353,10 +305,9 @@ def fetch_debt_list():
         if len(debt_base) < 40 or page > 30:
             break
         page += 1
-    update_bid_db(bid_info_list, succ_list, fail_list, bad_list, field='debtId', mod=p_debt_list)
 
 
-def predict_bid(binfo, succ_list, fail_list, bad_list, debt=False):
+def predict_bid(binfo, debt = False):
     if debt:
         id_key = api.k_debt_id
     else:
@@ -368,30 +319,26 @@ def predict_bid(binfo, succ_list, fail_list, bad_list, debt=False):
         if dic['CreditCode'] == 'AA':
             # AA不投
             continue
+        if dic['Months'] > 9:
+            continue
         row = svc.dicToX(dic)
         data_x.append(row)
         ids.append(_id)
     if len(data_x) == 0:
         return
-    log.info('before prediect. ids: %s', ids)
+    # log.info('before prediect. ids: %s', ids)
     # 合并多种预测的结果，任何一个预测危险都不投
     y_pred = config.svc.predict(data_x)
-    log.info('predict: %s', y_pred)
     for i in range(len(y_pred)):
-        is_bad = False
-        if y_pred[i] == 1:
-            is_bad = True
-        if is_bad:
-            bad_list.append(ids[i])
-        else:
+        if y_pred[i] == 0:
             if debt:
                 succ = try_buy_debt(ids[i])
             else:
                 succ = try_buy_bid(ids[i], config.bid_amount)
             if succ:
-                succ_list.append(ids[i])
-            else:
-                fail_list.append(ids[i])
+                log.info('id: %s', ids[i])
+            #     config.add_bid_count()
+    log.info('predict: %s', y_pred)
 
 
 # 根据余额调节各标的要求
@@ -406,15 +353,7 @@ def amount_control():
         total += left
     if rev:  # 有余额少的就扔到后面去
         config.users.reverse()
-    # for i in range(len(config.stand_by_users) - 1, -1, -1):
-    #     u = config.stand_by_users[i]
-    #     left = api.left_amount(u.tk)
-    #     if left > 3 * config.bid_amount:
-    #         config.users.append(u)
-    #         del (config.stand_by_users[i])
-    #         # delete.append(i)
-    #         total += left
-    # log.info('%s ' * len(config.users), *config.users)
+
     f = open('config.yml', 'r')
     conf = yaml.load(f)
     for key in conf:
@@ -423,12 +362,13 @@ def amount_control():
             api.credit_code.set_want_rate(**cf['rate'])
 
 
-def run(debt=False):
+def run(debt = False):
     code = [None]
     for c in code:
         dx, dy = svc.init_data(c)
         config.svc = svc.my_svc()
         config.svc.train(dx, dy)
+        config.svc.evaluate(dx[-800:], dy[-800:])
     # run
     wait_sec = 0.5
     if debt:
@@ -442,10 +382,12 @@ def run(debt=False):
     while True:
         fetch_list()
         i += 1
-        if i % 200 == 0:
+        if i % 500 == 0:
             i = 0
             amount_control()
             config.reload_token()
+        # config.limit_bid()
+        log.info(time_plus.std_datetime())
         time.sleep(wait_sec)
 
 

@@ -64,6 +64,7 @@ def get_debt_info(ids):
 
 def buy_bid(tk, lid, amount):
     data = {'ListingId': lid, 'Amount': amount}
+    data['UseCoupon'] = 'true'
     ret = pcli.send(url.buy_bid, data, tk)
     return ret
 
