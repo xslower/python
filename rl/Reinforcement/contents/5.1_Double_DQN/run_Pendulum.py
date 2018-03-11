@@ -42,7 +42,7 @@ def train(RL):
     total_steps = 0
     observation = env.reset()
     while True:
-        # if total_steps - MEMORY_SIZE > 8000: env.render()
+        if total_steps - MEMORY_SIZE > 8000: env.render()
 
         action = RL.choose_action(observation)
 
