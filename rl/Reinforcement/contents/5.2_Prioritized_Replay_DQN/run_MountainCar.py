@@ -42,7 +42,7 @@ def train(RL):
     for i_episode in range(20):
         observation = env.reset()
         while True:
-            # env.render()
+            env.render()
 
             action = RL.choose_action(observation)
 

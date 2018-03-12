@@ -42,6 +42,7 @@ class SumTree(object):
         if self.data_pointer >= self.capacity:  # replace when exceed the capacity
             self.data_pointer = 0
 
+    # 更新sum-tree的父节点的值
     def update(self, tree_idx, p):
         change = p - self.tree[tree_idx]
         self.tree[tree_idx] = p
