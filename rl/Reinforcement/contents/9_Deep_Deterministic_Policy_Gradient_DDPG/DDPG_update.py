@@ -15,25 +15,25 @@ import numpy as np
 import gym
 import time
 
-
 #####################  hyper parameters  ####################
 
 MAX_EPISODES = 200
 MAX_EP_STEPS = 200
-LR_A = 0.001    # learning rate for actor
-LR_C = 0.002    # learning rate for critic
-GAMMA = 0.9     # reward discount
-TAU = 0.01      # soft replacement
+LR_A = 0.001  # learning rate for actor
+LR_C = 0.002  # learning rate for critic
+GAMMA = 0.9  # reward discount
+TAU = 0.01  # soft replacement
 MEMORY_CAPACITY = 10000
 BATCH_SIZE = 32
 
 RENDER = False
 ENV_NAME = 'Pendulum-v0'
 
+
 ###############################  DDPG  ####################################
 
 class DDPG(object):
-    def __init__(self, a_dim, s_dim, a_bound,):
+    def __init__(self, a_dim, s_dim, a_bound, ):
         self.memory = np.zeros((MEMORY_CAPACITY, s_dim * 2 + a_dim + 1), dtype=np.float32)
         self.pointer = 0
         self.sess = tf.Session()
@@ -59,15 +59,14 @@ class DDPG(object):
         self.ct_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='Critic/target')
 
         # target net replacement
-        self.soft_replace = [[tf.assign(ta, (1 - TAU) * ta + TAU * ea), tf.assign(tc, (1 - TAU) * tc + TAU * ec)]
-                             for ta, ea, tc, ec in zip(self.at_params, self.ae_params, self.ct_params, self.ce_params)]
+        self.soft_replace = [[tf.assign(ta, (1 - TAU) * ta + TAU * ea), tf.assign(tc, (1 - TAU) * tc + TAU * ec)] for ta, ea, tc, ec in zip(self.at_params, self.ae_params, self.ct_params, self.ce_params)]
 
         q_target = self.R + GAMMA * q_
         # in the feed_dic for the td_error, the self.a should change to actions in memory
         td_error = tf.losses.mean_squared_error(labels=q_target, predictions=q)
         self.ctrain = tf.train.AdamOptimizer(LR_C).minimize(td_error, var_list=self.ce_params)
 
-        a_loss = - tf.reduce_mean(q)    # maximize the q
+        a_loss = - tf.reduce_mean(q)  # maximize the q
         self.atrain = tf.train.AdamOptimizer(LR_A).minimize(a_loss, var_list=self.ae_params)
 
         self.sess.run(tf.global_variables_initializer())
@@ -110,6 +109,7 @@ class DDPG(object):
             net = tf.nn.relu(tf.matmul(s, w1_s) + tf.matmul(a, w1_a) + b1)
             return tf.layers.dense(net, 1, trainable=trainable)  # Q(s,a)
 
+
 ###############################  training  ####################################
 
 env = gym.make(ENV_NAME)
@@ -133,18 +133,18 @@ for i in range(MAX_EPISODES):
 
         # Add exploration noise
         a = ddpg.choose_action(s)
-        a = np.clip(np.random.normal(a, var), -2, 2)    # add randomness to action selection for exploration
+        a = np.clip(np.random.normal(a, var), -2, 2)  # add randomness to action selection for exploration
         s_, r, done, info = env.step(a)
 
         ddpg.store_transition(s, a, r / 10, s_)
 
         if ddpg.pointer > MEMORY_CAPACITY:
-            var *= .9995    # decay the action randomness
+            var *= .9995  # decay the action randomness
             ddpg.learn()
 
         s = s_
         ep_reward += r
-        if j == MAX_EP_STEPS-1:
+        if j == MAX_EP_STEPS - 1:
             print('Episode:', i, ' Reward: %i' % int(ep_reward), 'Explore: %.2f' % var, )
             # if ep_reward > -300:RENDER = True
             break

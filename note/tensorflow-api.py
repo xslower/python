@@ -25,11 +25,12 @@ weights = tf.Variable()
 bias = tf.Variable()
 
 tf.assign(x, y) # 把y赋值给x
-
+tf.multiply(x, y) # x与y相乘；矩阵相乘时，只能有一个为矩阵，按元素相乘
+tf.matmul(x, y) # 矩阵相乘，x与y的shape必须匹配
 tf.argmax(y_label, axis=1)  # y_label是2维的，axis是操作哪一维。[[0,1,0],[1,0,0],[0,0,1]->[1,0,2]
 tf.expand_dims(tensor, 1)  # 把一个tensor扩充一维，例如[1,2,3]->[[1],[2],[3]] -> [[[1]],[[2]],[[3]]]。后面的参数不能随意取
 tf.squeeze(x) # 去掉长度=1的那些纬度，例：tf.shape(t) = [1,2,1,3,1,1] tf.shape(tf.squeeze(t))=[2,3]
-
+tf.reduce_mean(x, axis=0) # 延着指定纬度计算平均值x[mean][i][j]，不指定纬度则计算全部值的平均值
 
 tf.range(0, 10, 0)  # 跟python 的range一样生成一个0到9的list
 tf.concat([x, y], 1)  # 把两个同rank的tensor合并到一起，[[0],[1]] + [[2],[3]] = [[0,2],[1,3]]
@@ -54,6 +55,14 @@ from tensorflow.python.util import nest
 
 nest.flatten(x)  # 内部用递归的方式把N维输入，转为1维的list输出
 nest.is_sequence(x)  # isinstance(x, collections.Sequence) 1维以上的数组都=True
+
+'''概率'''
+mean = 0.0
+stddev = 1.0
+norm = tf.distributions.Normal(loc=mean, scale=stddev) # 正态分布，loc=平均值，scale=标准差
+norm.sample(sample_shape=1) # 基于此分布生成一个目标shape的样本集
+norm.log_prob(value=1.1) # 貌似是计算此分布某点的概率密度
+norm.entropy() # Shannon entropy
 
 """
 训练、建模：

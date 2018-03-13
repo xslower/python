@@ -1,5 +1,5 @@
 from maze_env import Maze
-from RL_brain import DoubleDQN
+from RL_brain import DuelingDQN
 import tensorflow as tf
 
 def run_maze():
@@ -47,8 +47,11 @@ if __name__ == "__main__":
     #                   replace_target_iter=200,
     #                   # output_graph=True
     #                   )
-    # sess = tf.Session()
-    RL = DoubleDQN(n_actions=env.n_actions, n_features=env.n_features, memory_size=2000, learning_rate=0.01, reward_decay=0.9,e_greedy_increment=0.001, e_greedy=0.9, double_q=True)
+    # ddqn
+    # RL = DoubleDQN(n_actions=env.n_actions, n_features=env.n_features, memory_size=2000, learning_rate=0.01, reward_decay=0.9,e_greedy_increment=0.001, e_greedy=0.9, double_q=True)
+    # dqnpr
+    # RL = DQNPrioritizedReplay(n_actions=env.n_actions, n_features=env.n_features, memory_size=2000, learning_rate=0.01, reward_decay=0.9,e_greedy_increment=0.001, e_greedy=0.9, prioritized=True)
+    RL = DuelingDQN(n_actions=env.n_actions, n_features=env.n_features, memory_size=2000, learning_rate=0.01, reward_decay=0.9, e_greedy_increment=0.001, e_greedy=0.9, dueling=True)
     # sess.run(tf.global_variables_initializer())
     env.after(100, run_maze)
     env.mainloop()
