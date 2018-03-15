@@ -51,7 +51,7 @@ if __name__ == "__main__":
     # RL = DoubleDQN(n_actions=env.n_actions, n_features=env.n_features, memory_size=2000, learning_rate=0.01, reward_decay=0.9,e_greedy_increment=0.001, e_greedy=0.9, double_q=True)
     # dqnpr
     # RL = DQNPrioritizedReplay(n_actions=env.n_actions, n_features=env.n_features, memory_size=2000, learning_rate=0.01, reward_decay=0.9,e_greedy_increment=0.001, e_greedy=0.9, prioritized=True)
-    RL = DuelingDQN(n_actions=env.n_actions, n_features=env.n_features, memory_size=2000, learning_rate=0.01, reward_decay=0.9, e_greedy_increment=0.001, e_greedy=0.9, dueling=True)
+    RL = DuelingDQN(n_actions=env.n_actions, n_features=env.n_features, memory_size=2000, learning_rate=0.01, reward_decay=0.9, e_greedy_increment=0.001, e_greedy=0.9, prioritized=True)
     # sess.run(tf.global_variables_initializer())
     env.after(100, run_maze)
     env.mainloop()
