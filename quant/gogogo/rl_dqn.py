@@ -27,4 +27,4 @@ class Dqn(object):
         pool1 = tf.keras.layers.MaxPool1D(pool_size=2, strides=1)(cnn1)
         cnn2 = tf.keras.layers.Conv1D(filters=16, kernel_size=5, strides=1, padding='valid')(pool1)
         pool2 = tf.keras.layers.MaxPooling1D(pool_size=2, strides=1)(cnn2)
-        
+

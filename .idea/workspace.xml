@@ -1,14 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="58e9c3c0-23ef-40e9-bd37-2b6acd2764b8" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/repo-py.iml" afterPath="$PROJECT_DIR$/.idea/repo-py.iml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/note/keras-api.py" afterPath="$PROJECT_DIR$/note/keras-api.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/note/tensorflow-api.py" afterPath="$PROJECT_DIR$/note/tensorflow-api.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/quant/gogogo/rl_dqn.py" afterPath="$PROJECT_DIR$/quant/gogogo/rl_dqn.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/quant/gogogo/stock_simulator.py" afterPath="$PROJECT_DIR$/quant/gogogo/stock_simulator.py" />
-    </list>
+    <list default="true" id="58e9c3c0-23ef-40e9-bd37-2b6acd2764b8" name="Default" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -55,7 +48,7 @@
             <entry file="file://$PROJECT_DIR$/quant/gogogo/rl_dqn.py">
               <provider selected="true" editor-type-id="text-editor">
                 <state relative-caret-position="662">
-                  <caret line="29" column="8" lean-forward="false" selection-start-line="29" selection-start-column="8" selection-end-line="29" selection-end-column="8" />
+                  <caret line="29" column="0" lean-forward="false" selection-start-line="29" selection-start-column="0" selection-end-line="29" selection-end-column="0" />
                   <folding>
                     <element signature="e#11#34#0" expanded="true" />
                   </folding>
@@ -1210,7 +1203,7 @@
     <entry file="file://$PROJECT_DIR$/quant/gogogo/rl_dqn.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="662">
-          <caret line="29" column="8" lean-forward="false" selection-start-line="29" selection-start-column="8" selection-end-line="29" selection-end-column="8" />
+          <caret line="29" column="0" lean-forward="false" selection-start-line="29" selection-start-column="0" selection-end-line="29" selection-end-column="0" />
           <folding>
             <element signature="e#11#34#0" expanded="true" />
           </folding>
