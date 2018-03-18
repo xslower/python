@@ -21,6 +21,7 @@ class Dqn(object):
         self.rand_gate = 0.5
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
+        self.batch_size = 5
         self.step = 1
         self.l_obs = []
         self.l_act = []
@@ -32,8 +33,7 @@ class Dqn(object):
 
     def _build_net(self, obs, scope):
         with tf.variable_scope(scope):
-            cnn1 = tf.keras.layers.Conv1D(filters=16, kernel_size=5, strides=1, input_shape=self.input_shape,
-                                          padding='valid')(obs)
+            cnn1 = tf.keras.layers.Conv1D(filters=16, kernel_size=5, strides=1, input_shape=self.input_shape, padding='valid')(obs)
             pool1 = tf.keras.layers.MaxPool1D(pool_size=2, strides=1)(cnn1)
             cnn2 = tf.keras.layers.Conv1D(filters=32, kernel_size=5, strides=1, padding='valid')(pool1)
             pool2 = tf.keras.layers.MaxPooling1D(pool_size=2, strides=1)(cnn2)
@@ -74,3 +74,10 @@ class Dqn(object):
 
         q_predict = self.sess.run(self.q_pred, feed_dict={self.samples: self.l_next_obs})
         q_target = self.sess.run(self.q_eval, feed_dict={self.samples: self.l_obs})
+        num = len(self.l_reward)
+        batch_indexes = np.arange(num, dtype=np.int32)
+        q_target[batch_indexes, self.l_act] = self.l_reward + self.decay * np.max(q_predict, axis=1)
+
+        _, cost = self.sess.run([self.train_op, self.loss], feed_dict={self.samples: self.l_obs, self.q_target: q_target})
+        print(cost)
+        self.step += 1
