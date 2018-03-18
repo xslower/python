@@ -362,7 +362,7 @@ def amount_control():
             api.credit_code.set_want_rate(**cf['rate'])
 
 
-def run(debt = False):
+def run():
     code = [None]
     for c in code:
         dx, dy = svc.init_data(c)
@@ -370,22 +370,17 @@ def run(debt = False):
         config.svc.train(dx, dy)
         config.svc.evaluate(dx[-800:], dy[-800:])
     # run
-    wait_sec = 0.5
-    if debt:
-        # wait_sec = 2
-        fetch_list = fetch_debt_list
-    else:
-        fetch_list = fetch_loan_list
+    wait_sec = 1
 
     amount_control()
     i = 0
     while True:
-        fetch_list()
-        i += 1
-        if i % 500 == 0:
-            i = 0
-            amount_control()
-            config.reload_token()
+        fetch_loan_list()
+        # i += 1
+        # if i % 500 == 0:
+        #     i = 0
+        #     amount_control()
+        #     config.reload_token()
         # config.limit_bid()
         log.info(time_plus.std_datetime())
         time.sleep(wait_sec)
@@ -401,7 +396,7 @@ def main():
     if mode == 'norm':
         run()
     elif mode == 'debt':
-        run(True)
+        run()
     else:
         log.info('not support arg')
 

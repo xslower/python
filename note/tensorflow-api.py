@@ -42,7 +42,7 @@ tf.transpose(tensor, perm=[1, 2, 0])  # 例如：[depth, height, width] to [heig
 batch_x, batch_y = tf.train.batch([x, y], batch_size=10)  # 貌似专门用来打包输入数据的，一般x,y为两个queue，此方法会把打包为每次输出batch_size大小的x,y
 
 tf.layers.batch_normalization(tensor)  # 貌似是在每层激活函数之前，给增加每一维增加一个sub学习率，来归一化数据，让其分布保持不变，以加速训练速度
-
+tf.nn.embedding_lookup(tensor, ids=[1, 2, 3])  # 这是根据ids里的索引idx，获取params里相应索引的值，
 with tf.control_dependencies([x, y]):  # 梳理op运行关系的，必须先运行一些op，才能运行后面的。经常用于先计算summary
     pass
 
@@ -64,10 +64,8 @@ norm.sample(sample_shape=1) # 基于此分布生成一个目标shape的样本集
 norm.log_prob(value=1.1) # 貌似是计算此分布某点的概率密度
 norm.entropy() # Shannon entropy
 
-"""
-训练、建模：
-"""
-# 损失函数：
+"""训练、建模："""
+'''损失函数：'''
 tf.nn.sigmoid_cross_entropy_with_logits(labels=y_label, logits=y)
 # 这个主要是面向2分类的
 
@@ -78,18 +76,21 @@ tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.argmax(y_label, 1), log
 # 与上面不同。估计是为了维数多时方便接收数据的。
 # labels必须比logits少一维。一般为[0,1,2,1]每一位表示一个样本的类别
 # logits则是计算出来的输出。一般为[[1,0,0],[0,1,0],[0,0,1],[0,1,0]]。
+tf.squared_difference(x, y) #平方差(x-y)(x-y)
 
-class _LoggerHook:
-    pass
+tf.nn.nce_loss(weights=x, biases=y, labels=y, inputs=x, num_sampled=10, num_classes=50000)  # cbow和skip-gram训练时打包的一个损失函数(目标函数)，详见word2vec理解
 
+'''优化'''
+lr = 0.1
+tf.train.GradientDescentOptimizer(learning_rate=lr, use_locking=True) # 基本的随机梯度下降，use_locking不知道干嘛
+tf.train.AdamOptimizer(learning_rate=lr, beta1=0.9, beta2=0.99) # 后面两个是动量的衰减
 
-tf.train.MonitoredTrainingSession(checkpoint_dir='dir', hooks=[_LoggerHook()], config=tf.ConfigProto(log_device_placement=True))
+tf.train.MonitoredTrainingSession(checkpoint_dir='dir', hooks=[], config=tf.ConfigProto(log_device_placement=True))
 # 根据参数创建一个MonitoredSession对象。其是个很好用的工具，可以自行把summary和checkpoing记录到指定的目录下，而且可以自行维护所有线程。
 # 并且，这个session貌似会恢复上次的训练的结果后继续训练
 # tf.layers  # 这是一个高层api，提供了一些网络结构定义的方法
-# tf.estimator  # 这是一个高层api，提供了训练评估等方法的封装 # todo 有空研究下，还有keras可以减少很多代码。
-tf.nn.embedding_lookup(tensor, ids=[1, 2, 3])  # 这是根据ids里的索引idx，获取params里相应索引的值，
-tf.nn.nce_loss(weights=x, biases=y, labels=y, inputs=x, num_sampled=10, num_classes=50000)  # cbow和skip-gram训练时打包的一个损失函数(目标函数)，详见word2vec理解
+# tf.estimator  # 这是一个高层api，提供了训练评估等方法的封装
+# hooks=勾子类
 
 """ cnn相关："""
 # 卷积层
