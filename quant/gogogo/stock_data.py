@@ -41,29 +41,45 @@ def fetch_m_data(id):
         else:
             df.to_csv(file, header=None, mode='a')
 
+I_DATE = 0
+I_OPEN = 1
+I_CLOSE = 2
+I_HIGH = 3
+I_LOW = 4
+I_TURN = 5
+I_VOL = 6
 
 # 从csv文件中读取数据，有可能需要多只股票合并使用，所以不能去掉时间
 def load_file(id, no_stop = False):
+    def divide(a, b):
+        if b == 0:
+            b = 1
+        return a / b
     file = 'data/stock/%s.csv'
     csv_file = open(file % id, 'r')
     iter = csv.reader(csv_file)
     trade_data = []
     last_close = 0
     for li in iter:
-        if li[0] == '':
+        if li[I_DATE] == '':
             continue
         # 去掉停盘数据
-        if no_stop and li[5] == 0:
+        if no_stop and li[I_TURN] == 0:
             continue
         for i in range(1, len(li)):
             if li[i] == '':
                 li[i] = 0
             else:
                 li[i] = float(li[i])
-        today_close = li[2]
-        li[7] = (today_close - last_close) / last_close * 100
+
+        today_close = li[I_CLOSE]
+        li[I_OPEN] = today_close
+        li[I_CLOSE] = today_close / last_close - 1
+        li[I_HIGH] = li[I_HIGH] / last_close - 1
+        li[I_LOW] = li[I_LOW] / last_close - 1
+
         last_close = today_close
-        trade_data.append(li[:8])
+        trade_data.append(li[:7])
     # print(trade_data[:10], trade_data[-10:])
     csv_file.close()
     return trade_data
