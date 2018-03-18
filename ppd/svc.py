@@ -19,7 +19,8 @@ def _divide(a, b):
 
 class word2int:
     edu = {'夜大电大函大普通班': 1, '专科(高职)': 2, '专科 (高职)': 2, '专科（高职）': 2, '专科': 3, '专升本': 4, '本科': 5, '硕士研究生': 6, '博士研究生': 7}
-    study = {'不详': 0, '业余': 1, '开放教育': 2, '网络教育': 2, '函授': 2, '成人': 3, '自考': 4, '自学考试': 4, '脱产': 5, '普通': 6, '普通全日制': 7, '全日制': 7, '研究生': 8}
+    study = {'不详': 0, '业余': 1, '开放教育': 2, '网络教育': 2, '函授': 2, '成人': 3, '自考': 4, '自学考试': 4, '脱产': 5, '普通': 6, '普通全日制': 7,
+             '全日制': 7, '研究生': 8}
 
     @classmethod
     def edu_val(cls, key):
@@ -39,13 +40,15 @@ class word2int:
 
 
 def objToX(bid):
-    row = [bid.amount, bid.owingPrincipal, bid.owingAmount, bid.highestDebt, bid.highestPrincipal, bid.totalPrincipal, _divide(bid.amount, bid.owingAmount), _divide(bid.amount, bid.highestDebt),
+    row = [bid.amount, bid.owingPrincipal, bid.owingAmount, bid.highestDebt, bid.highestPrincipal, bid.totalPrincipal,
+           _divide(bid.amount, bid.owingAmount), _divide(bid.amount, bid.highestDebt),
 
-        bid.successCount, bid.wasteCount, bid.cancelCount, bid.failedCount, bid.normalCount, bid.overdueLessCount, bid.overdueMoreCount,
+           bid.successCount, bid.wasteCount, bid.cancelCount, bid.failedCount, bid.normalCount, bid.overdueLessCount, bid.overdueMoreCount,
+           # _divide(bid.overdueLessCount, bid.normalCount),
 
-        bid.certificateValidate, bid.nciicIdentityCheck, bid.phoneValidate, bid.videoValidate, bid.creditValidate, bid.educateValidate,
+           bid.certificateValidate, bid.nciicIdentityCheck, bid.phoneValidate, bid.videoValidate, bid.creditValidate, bid.educateValidate,
 
-        bid.months, bid.gender, word2int.edu_val(bid.educationDegree), word2int.study_val(bid.studyStyle), bid.age]
+           bid.months, bid.gender, word2int.edu_val(bid.educationDegree), word2int.study_val(bid.studyStyle), bid.age]
 
     for i in range(len(row)):
         if row[i] is None:
@@ -54,18 +57,24 @@ def objToX(bid):
 
 
 def dicToX(info):
-    row = [info['Amount'], info['OwingPrincipal'], info['OwingAmount'], info['HighestDebt'], info['HighestPrincipal'], info['TotalPrincipal'], _divide(info['Amount'], info['OwingAmount']), _divide(info['Amount'], info['HighestDebt']),
+    row = [info['Amount'], info['OwingPrincipal'], info['OwingAmount'], info['HighestDebt'], info['HighestPrincipal'],
+           info['TotalPrincipal'], _divide(info['Amount'], info['OwingAmount']),
+           _divide(info['Amount'], info['HighestDebt']),
 
-        info['SuccessCount'], info['WasteCount'], info['CancelCount'], info['FailedCount'], info['NormalCount'], info['OverdueLessCount'], info['OverdueMoreCount'],
+           info['SuccessCount'], info['WasteCount'], info['CancelCount'], info['FailedCount'], info['NormalCount'],
+           info['OverdueLessCount'], info['OverdueMoreCount'],
 
-        info['CertificateValidate'], info['NciicIdentityCheck'], info['PhoneValidate'], info['VideoValidate'], info['CreditValidate'], info['EducateValidate'],
+           info['CertificateValidate'], info['NciicIdentityCheck'], info['PhoneValidate'], info['VideoValidate'],
+           info['CreditValidate'], info['EducateValidate'],
 
-        info['Months'], info['Gender'], word2int.edu_val(info['EducationDegree']), word2int.study_val(info['StudyStyle']), info['Age']]
+           info['Months'], info['Gender'], word2int.edu_val(info['EducationDegree']),
+           word2int.study_val(info['StudyStyle']), info['Age']]
     # info['CurrentRate']
     for i in range(0, len(row)):
         if row[i] is None:
             row[i] = 0
     return row
+
 
 num_class = 3
 repayOverRate = 98
@@ -89,7 +98,7 @@ def class_label(status, overDays):
     return y
 
 
-def init_data(code = None):
+def init_data(code=None):
     dx = []
     dy = []
     expr = p_bids_real.where()
@@ -114,7 +123,7 @@ def init_data(code = None):
     return dx, dy
 
 
-def save_file(dx, dy, pre = 'all'):
+def save_file(dx, dy, pre='all'):
     xf = open('data/%s_x.pkl' % pre, 'wb')
     pickle.dump(dx, xf)
     xf.close()
@@ -123,7 +132,7 @@ def save_file(dx, dy, pre = 'all'):
     yf.close()
 
 
-def load_file(pre = 'all'):
+def load_file(pre='all'):
     xf = open('data/%s_x.pkl' % pre, 'rb')
     dx = pickle.load(xf)
     yf = open('data/%s_y.pkl' % pre, 'rb')
@@ -131,7 +140,7 @@ def load_file(pre = 'all'):
     return dx, dy
 
 
-def train_test_split(dx, dy, rate = 9):
+def train_test_split(dx, dy, rate=9):
     x = np.array(dx)
     y = np.array(dy)
     pos = len(x) // 10 * rate
@@ -148,7 +157,7 @@ class my_svc(object):
         self.pca = PCA(n_components='mle', svd_solver='full')
         self.clf_list = []
 
-    def train(self, x, y, weight = None):
+    def train(self, x, y, weight=None):
         self.scaler.fit(x)
         x_norm = self.scaler.transform(x)
         self.pca.fit(x_norm)
@@ -189,6 +198,7 @@ class my_svc(object):
         for clf in self.clf_list:
             y_pred = clf.predict(x_norm)
             precise(y_test, y_pred)
+
 
 def precise(y, y_pred):
     cnt = []

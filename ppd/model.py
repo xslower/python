@@ -8,7 +8,7 @@ import yaml
 from mini_orm import *
 
 db_def = {
-    "host": "rm-uf6tz1g9l077nkd0d.mysql.rds.aliyuncs.com",
+    "host": "rm-uf6tz1g9l077nkd0do.mysql.rds.aliyuncs.com",
     "port": 3306,
     "user": "rdsroot",
     "password": "yinnuo123!@#",
