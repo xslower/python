@@ -41,21 +41,18 @@ def fetch_m_data(id):
         else:
             df.to_csv(file, header=None, mode='a')
 
-I_DATE = 0
-I_OPEN = 1
-I_CLOSE = 2
-I_HIGH = 3
-I_LOW = 4
-I_TURN = 5
-I_VOL = 6
 
-# 从csv文件中读取数据，有可能需要多只股票合并使用，所以不能去掉时间
+# 从csv文件中读取数据
+# 输出格式为：0-close, 1-close_up, 2-high_up, 3-low_up, 4-turn_over, 5-volume
 def load_file(id, no_stop = False):
+    I_DATE, I_OPEN, I_CLOSE, I_HIGH, I_LOW, I_TURN, I_VOL = 0, 1, 2, 3, 4, 5, 6
     def divide(a, b):
         if b == 0:
             b = 1
         return a / b
-    file = 'data/stock/%s.csv'
+
+    id = stock_id(id)
+    file = 'stock/%s.csv'
     csv_file = open(file % id, 'r')
     iter = csv.reader(csv_file)
     trade_data = []
@@ -74,12 +71,12 @@ def load_file(id, no_stop = False):
 
         today_close = li[I_CLOSE]
         li[I_OPEN] = today_close
-        li[I_CLOSE] = today_close / last_close - 1
-        li[I_HIGH] = li[I_HIGH] / last_close - 1
-        li[I_LOW] = li[I_LOW] / last_close - 1
+        li[I_CLOSE] = divide(today_close, last_close) - 1
+        li[I_HIGH] = divide(li[I_HIGH], last_close) - 1
+        li[I_LOW] = divide(li[I_LOW], last_close) - 1
 
         last_close = today_close
-        trade_data.append(li[:7])
+        trade_data.append(li[1:7])
     # print(trade_data[:10], trade_data[-10:])
     csv_file.close()
     return trade_data
@@ -151,12 +148,10 @@ def prepare(stock_id, base_id = '000001.XSHG'):
     xf.close()
 
 
-def load_train_data(id):
-    pkl_file = 'data/parsed/%s_x.pkl' % stock_id
-    xf = open(pkl_file, 'rb')
-    x = pickle.load(xf)
-    return x
-    # print(x[:10], x[-10:])
+def stock_id(id):
+    id = str(id)
+    full_id = '0' * (6 - len(id)) + id +'.XSHE'
+    return full_id
 
 
 if __name__ == '__main__':

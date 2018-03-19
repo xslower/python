@@ -92,13 +92,19 @@ tf.train.MonitoredTrainingSession(checkpoint_dir='dir', hooks=[], config=tf.Conf
 # tf.estimator  # 这是一个高层api，提供了训练评估等方法的封装
 # hooks=勾子类
 
-""" cnn相关："""
-# 卷积层
+""" 各类网络："""
+tf.layers.dense(inputs, units=32, activation=tf.nn.relu)
+'''cnn'''
+tf.layers.conv1d(inputs=inputs, filters=64, kernel_size=3, strides=1) # filters是隐藏单元数
+tf.layers.conv2d(inputs=inputs, filters=32, kernel_size=[3,4], strides=(1,1)) # filters同上，kernel_size=窗口大小，改为2维的；strides也一样
+
 tf.nn.conv2d(inputs, weights, strides=[1, 2, 2, 1], padding='SAME')  # stride=在input各个纬度上的步长，[不同的样本, 宽, 高, 深]，第一纬为不同的样本，步长只能=1，最后一纬=深度，也只能=1；padding=SAME就是保持大小，边上缺少的填充0，VALID=不填充
 # 池化层
+tf.layers.max_pooling1d(inputs, pool_size=2, strides=1) # pool_size=池化窗口
 tf.nn.max_pool(inputs, ksize=[1, 1, 1, 1], strides=[1, 2, 2, 1], padding='SAME')  # 其它参数同上，ksize的格式很奇葩与stride相同[1,2,2,1]。[不同的样本, 宽, 高, 深]
 
-"""rnn相关："""
+
+'''rnn'''
 last_state = tf.Variable()
 tf.nn.rnn_cell.RNNCell()  # rnn的抽象类
 
