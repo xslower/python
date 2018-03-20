@@ -33,7 +33,7 @@ tf.squeeze(x) # 去掉长度=1的那些纬度，例：tf.shape(t) = [1,2,1,3,1,1
 tf.reduce_mean(x, axis=0) # 延着指定纬度计算平均值x[mean][i][j]，不指定纬度则计算全部值的平均值
 
 tf.range(0, 10, 0)  # 跟python 的range一样生成一个0到9的list
-tf.concat([x, y], 1)  # 把两个同rank的tensor合并到一起，[[0],[1]] + [[2],[3]] = [[0,2],[1,3]]
+tf.concat([x, y], axis=1)  # 把两个同rank的tensor合并到一起，[[0],[1]] + [[2],[3]] = [[0,2],[1,3]]; axis延某一维合并
 tf.slice(tensor, begin=0, size=2)  #
 tf.strided_slice(tensor, [1], [6])  # = labels[1:6]
 tf.nn.lrn(input)  # 卷积层之后使用的一种数据归一化方法，可以把大的值变得相对更大，小值相对更小，防止在层数增加时权重衰减

@@ -1,12 +1,10 @@
 '''dqn '''
-import tensorflow as tf
-import numpy as np
+from header import *
 from stock_simulator import Simulator
 
 
 def dtype():
     return tf.float32
-
 
 
 class Dqn(object):
@@ -22,10 +20,9 @@ class Dqn(object):
         self.sess.run(tf.global_variables_initializer())
         self.batch_size = 5
         self.step = 1
-        self.l_obs = []
-        self.l_act = []
-        self.l_reward = []
-        self.l_next_obs = []
+        self.l_obs, self.l_stores = [], []
+        self.l_act, self.l_reward = [], []
+        self.l_next_obs, self.l_next_stores = [], []
 
     def _dtype(self):
         return tf.float16
@@ -44,9 +41,9 @@ class Dqn(object):
             print(tf.shape(out))
         return out
 
-    def _build_net(self, obs, scope):
+    def _build_net(self, obs, store, scope):
         with tf.variable_scope(scope):
-            cnn1 = tf.layers.conv1d(obs, filters=8, kernel_size=5)
+            cnn1 = tf.layers.conv1d(obs, filters=16, kernel_size=5)
             pool1 = tf.layers.max_pooling1d(cnn1, pool_size=2, strides=1)
             cnn2 = tf.layers.conv1d(pool1, filters=16, kernel_size=5)
             pool2 = tf.layers.max_pooling1d(cnn2, pool_size=2, strides=1)
@@ -57,6 +54,8 @@ class Dqn(object):
                 for i in range(1, len(shape_x)):
                     num *= shape_x[i]
                 x = tf.reshape(x, [-1, num])
+
+            x = tf.concat([x, tf.expand_dims(store, 1)], 1)
             # pool1 = tf.reshape(pool1, )
             dnn = tf.layers.dense(x, 128, activation=tf.nn.relu)
             out = tf.layers.dense(dnn, self.num_act)
@@ -64,27 +63,33 @@ class Dqn(object):
 
     def _build_dqn(self):
         self.samples = tf.placeholder(dtype(), [None, *self.input_shape], name='samples')
+        self.stores = tf.placeholder(dtype(), [None], name='stores')
         self.q_target = tf.placeholder(dtype(), [None, self.num_act], name='q_target')
-        self.q_eval = self._build_net(self.samples, 'eval')
+
+        self.q_eval = self._build_net(self.samples, self.stores, 'eval')
         self.loss = tf.reduce_mean(tf.squared_difference(x=self.q_eval, y=self.q_target))
         self.train_op = tf.train.AdamOptimizer(self.learn_rate).minimize(self.loss)
-        self.q_pred = self._build_net(self.samples, 'pred')
+        self.q_pred = self._build_net(self.samples, self.stores, 'pred')
         eval_para = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='eval')
         pred_para = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='pred')
         move_decay = 0.5
-        self.replace = [tf.assign(e, (1 - move_decay) * e + move_decay * p) for e, p in zip(eval_para, pred_para)]
+        # self.replace = [tf.assign(e, (1 - move_decay) * e + move_decay * p) for e, p in zip(eval_para, pred_para)]
+        self.replace = [tf.assign(p, e) for p, e in zip(pred_para, eval_para)]
 
-    def store_transition(self, obs, act, reward, next_obs):
+    def store_transition(self, obs, store, act, reward, next_obs, next_store):
         self.l_obs.append(obs)
+        self.l_stores.append(store)
         self.l_act.append(act)
         self.l_reward.append(reward)
         self.l_next_obs.append(next_obs)
+        self.l_next_stores.append(next_store)
 
-    def choose_action(self, obs):
+    def choose_action(self, obs, store):
         if np.random.uniform() < self.rand_gate:
             obs = obs[np.newaxis, :]
-            acts = self.sess.run(self.q_eval, feed_dict={self.samples: obs})
-            act = np.argmax(acts) # 这里不指定纬度，[[0,1,2]]->2
+            store = store[np.newaxis, :]
+            acts = self.sess.run(self.q_eval, feed_dict={self.samples: obs, self.stores: store})
+            act = np.argmax(acts)  # 这里不指定纬度，[[0,1,2]]->2
         else:
             act = np.random.randint(0, self.num_act)
         self.increase_rand_gate()
@@ -96,15 +101,16 @@ class Dqn(object):
             self.rand_gate = self.rand_gate_max
 
     def learn(self):
-        if self.step % 10 == 0:
+        if self.step % 20 == 0:
             self.sess.run(self.replace)
 
-        q_predict = self.sess.run(self.q_pred, feed_dict={self.samples: self.l_next_obs})
-        q_target = self.sess.run(self.q_eval, feed_dict={self.samples: self.l_obs})
+        q_predict = self.sess.run(self.q_pred, feed_dict={self.samples: self.l_next_obs, self.stores: self.l_next_stores})
+        q_target = self.sess.run(self.q_eval, feed_dict={self.samples: self.l_obs, self.stores: self.l_stores})
         num = len(self.l_reward)
         batch_indexes = np.arange(num, dtype=np.int32)
         q_target[batch_indexes, self.l_act] = self.l_reward + self.decay * np.max(q_predict, axis=1)
 
-        _, cost = self.sess.run([self.train_op, self.loss], feed_dict={self.samples: self.l_obs, self.q_target: q_target})
-        print('cost:', cost)
+        _, cost = self.sess.run([self.train_op, self.loss], feed_dict={self.samples: self.l_obs, self.stores: self.l_stores, self.q_target: q_target})
+
         self.step += 1
+        return cost
