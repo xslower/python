@@ -15,8 +15,8 @@ class Dqn(object):
         self.num_act = n_act
         self.rand_gate = 0.0
         self.rand_gate_max = 0.9
-        self.obs = obs
-        # print('convert ok')
+        self.obs = tf.convert_to_tensor(obs)
+        print('convert ok')
         self._build_dqn()
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
@@ -26,7 +26,7 @@ class Dqn(object):
 
     def _reset_samples(self):
         # 只是占个位置
-        self.l_obs, self.l_next_obs = [], []
+        self.l_obs, self.l_next_obs = None, None
         self.l_store, self.l_next_store = [], []
         self.l_act, self.l_reward = [], []
 
@@ -67,8 +67,8 @@ class Dqn(object):
         return out
 
     def _build_dqn(self):
-        self.k_line = tf.placeholder(dtype(), [None, *self.input_shape], name='samples')
-        # self.k_line = self.obs[:10]
+        # self.k_line = tf.placeholder(dtype(), [None, *self.input_shape], name='samples')
+        self.k_line = self.obs[:10]
         self.store = tf.placeholder(dtype(), [None], name='stores')
         self.q_target = tf.placeholder(dtype(), [None, self.num_act], name='q_target')
 
@@ -83,16 +83,14 @@ class Dqn(object):
         self.replace = [tf.assign(p, e) for p, e in zip(pred_para, eval_para)]
 
     def store_transition(self, idx, store, act, reward, next_store):
-        # obs = tf.expand_dims(self.obs[idx], axis=0)
-        # nxt_obs = tf.expand_dims(self.obs[idx + 1], axis=0)
-        obs = self.obs[idx][np.newaxis, :]
-        nxt_obs = self.obs[idx + 1][np.newaxis, :]
-        if len(self.l_obs) == 0:
+        obs = tf.expand_dims(self.obs[idx], axis=0)
+        nxt_obs = tf.expand_dims(self.obs[idx + 1], axis=0)
+        if len(self.l_act) == 0:
             self.l_obs = obs
             self.l_next_obs = obs
         else:
-            self.l_obs = np.append(self.l_obs, obs, axis=0)
-            self.l_next_obs = np.append(self.l_next_obs, nxt_obs, axis=0)
+            self.l_obs = tf.concat([self.l_obs, obs], axis=0)
+            self.l_next_obs = tf.concat([self.l_next_obs, nxt_obs], axis=0)
 
         self.l_store.append(store)
         self.l_act.append(act)
@@ -101,7 +99,7 @@ class Dqn(object):
 
     def choose_action(self, idx, store):
         if np.random.uniform() < self.rand_gate:
-            obs = self.obs[idx][np.newaxis, :]
+            obs = tf.expand_dims(self.obs[idx], axis=0)
             store = [store]
             acts = self.sess.run(self.q_eval, feed_dict={self.k_line: obs, self.store: store})
             act = np.argmax(acts)  # 这里不指定纬度，[[0,1,2]]->2

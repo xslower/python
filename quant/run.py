@@ -21,7 +21,7 @@ def run():
         sim.reset()
         last_store = 0
         log.info('epoch %s', epoch)
-        for idx in range(obs_len, split - 1):
+        for idx in range(_split - 1):
             if samples[idx] is None:
                 continue
             act = dqn.choose_action(idx, last_store)
@@ -37,7 +37,7 @@ def run():
 
 def test():
     store = 0
-    for idx in range(split, len(samples)):
+    for idx in range(_split, len(samples)):
         dqn.rand_gate = 1
         act = dqn.choose_action(idx, store)
         store, reward = sim.step(idx, act)
@@ -50,7 +50,7 @@ if __name__ == '__main__':
     sim = Simulator(k_line)
     dqn = Dqn(act_num, samples, [obs_len, 6])
     rate = 6
-    split = len(samples) // 10 * rate
+    _split = len(samples) // 10 * rate
     # strain, stest = train_test_split(samples, 6)
     run()
     test()

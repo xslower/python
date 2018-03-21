@@ -2,6 +2,7 @@ import tushare as ts
 # import tensorflow as tf
 from sklearn import preprocessing
 import csv, pickle
+import numpy as np
 
 
 # tf.nn.l2_normalize()
@@ -87,14 +88,11 @@ def prepare_single(stock_id):
     ss = preprocessing.StandardScaler()
     line = load_file(stock_id)
     samples = []
-    for i in range(obs_len):
-        samples.append(None) # 占位，保持与line长度相同
-
     for i in range(obs_len, len(line)):
         norm = ss.fit_transform(line[i-obs_len:i])
         samples.append(norm)
 
-    return line, samples
+    return line[obs_len:], np.array(samples)
 
 
 def prepare(stock_id, base_id = '000001.XSHG'):
