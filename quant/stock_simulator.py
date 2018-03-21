@@ -64,5 +64,5 @@ class Simulator(object):
     def show_act(self, idx, act):
         an = self.act_name(act)
         if an != 'wait' and act != self.last_act:
-            log.info('%s %s stock:%s cash:%s', idx, an, self.stock_val, self.cash)
+            log.info('%s %s stock:%.2f cash:%.2f', idx, an, self.stock_val, self.cash)
         self.last_act = act

@@ -81,36 +81,20 @@ def load_file(id, no_stop = False):
     csv_file.close()
     return trade_data
 
-
-def parse_y(x):
-    x_len = 300
-    y_len = 50
-    y = [0] * len(x)
-    if len(x) < x_len + y_len:
-        return y
-    for i in range(x_len, len(x) - y_len):
-        acc_up = 0
-        max_up = 0
-        for j in range(1, y_len):
-            acc_up += x[7]
-            if abs(acc_up) > abs(max_up):
-                max_abs = acc_up
-        y[i] = max_up
-    return y
-
-
+obs_len = 300
 #
 def prepare_single(stock_id):
-    xd = load_file(stock_id, True)
-    y = [0] * len(xd)
-    for i in range(len(xd)):
-        y[i] = parse_y(None, xd[i])
-        # 去掉日期
-        del (xd[i][0])
     ss = preprocessing.StandardScaler()
-    # x_norm = xd
-    x_norm = ss.fit_transform(xd)
-    return x_norm, y
+    line = load_file(stock_id)
+    samples = []
+    for i in range(obs_len):
+        samples.append(None) # 占位，保持与line长度相同
+
+    for i in range(obs_len, len(line)):
+        norm = ss.fit_transform(line[i-obs_len:i])
+        samples.append(norm)
+
+    return line, samples
 
 
 def prepare(stock_id, base_id = '000001.XSHG'):
