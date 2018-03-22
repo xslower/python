@@ -2,6 +2,7 @@
 
 from header import *
 
+
 class Simulator(object):
     def __init__(self, env, cash = 100000):
         self.total_cash = cash
@@ -53,7 +54,9 @@ class Simulator(object):
         else:  # wait
             self.stock_val += self.stock_val * up
             store = 0
-        reward = (self.stock_val + self.cash) / before - 1
+        now = self.stock_val + self.cash
+        mini = now if now < before else before
+        reward = (now - before) / mini * 10
         return store, reward
 
     def act_name(self, act):

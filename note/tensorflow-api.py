@@ -28,14 +28,15 @@ tf.assign(x, y) # 把y赋值给x
 tf.multiply(x, y) # x与y相乘；矩阵相乘时，只能有一个为矩阵，按元素相乘
 tf.matmul(x, y) # 矩阵相乘，x与y的shape必须匹配
 tf.argmax(y_label, axis=1)  # y_label是2维的，axis是操作哪一维。[[0,1,0],[1,0,0],[0,0,1]->[1,0,2]
-tf.expand_dims(tensor, 1)  # 把一个tensor扩充一维，例如[1,2,3]->[[1],[2],[3]] -> [[[1]],[[2]],[[3]]]。后面的参数不能随意取
+tf.expand_dims(tensor, axis=1)  # 把一个tensor扩充一维，axis=扩充第几维。例如[1,2,3]->[[1],[2],[3]] -> [[[1]],[[2]],[[3]]]。
 tf.squeeze(x) # 去掉长度=1的那些纬度，例：tf.shape(t) = [1,2,1,3,1,1] tf.shape(tf.squeeze(t))=[2,3]
 tf.reduce_mean(x, axis=0) # 延着指定纬度计算平均值x[mean][i][j]，不指定纬度则计算全部值的平均值
 
 tf.range(0, 10, 0)  # 跟python 的range一样生成一个0到9的list
-tf.concat([x, y], axis=1)  # 把两个同rank的tensor合并到一起，[[0],[1]] + [[2],[3]] = [[0,2],[1,3]]; axis延某一维合并
-tf.slice(tensor, begin=0, size=2)  #
-tf.strided_slice(tensor, [1], [6])  # = labels[1:6]
+tf.concat([x, y], axis=1)  # 把两个同shape的tensor合并到一起; axis延某一维合并[[0,1],[1,2]] + [[2,4],[3,6]] = [[0,1],[1,2],[2,4],[3,6]](axis=0) = [[0,1,2,4],[1,2,3,6]](axis=1)
+tf.slice(tensor, begin=[1,0,0], size=[1,1,3])  # 数组切片，begin是起始位置，size[i]是第i维需要的元素个数
+tf.strided_slice(tensor, [1], [6])  # = labels[1:6]，推荐直接使用py风格的tensor[1:6]
+
 tf.nn.lrn(input)  # 卷积层之后使用的一种数据归一化方法，可以把大的值变得相对更大，小值相对更小，防止在层数增加时权重衰减
 tf.nn.xw_plus_b(x, weights, bias)  # 计算x * w + b
 tf.transpose(tensor, perm=[1, 2, 0])  # 例如：[depth, height, width] to [height, width, depth]。perm指定哪些纬度交换，[1, 2, 0]=第一维成为最后一维二三维成为一二维。矩阵转秩

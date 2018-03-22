@@ -7,8 +7,9 @@ from rl_dqn import Dqn
 
 stock_list = [1, 2, 4, 5, 7, 8, 9]
 obs_len = 300
-epoch_num = 50
+epoch_num = 200
 act_num = 2
+
 
 def train_test_split(dx, rate = 9):
     x = np.array(dx)
@@ -16,12 +17,19 @@ def train_test_split(dx, rate = 9):
     return x[:pos], x[pos:]
 
 
-def run():
+def run(train_end):
     for epoch in range(epoch_num):
         sim.reset()
         last_store = 0
         log.info('epoch %s', epoch)
-        for idx in range(_split - 1):
+        if epoch < 10:
+            dqn.rand_gate = 0.0
+        else:
+            if epoch % 2 == 0:
+                dqn.rand_gate = 0.5
+            else:
+                dqn.rand_gate = 1
+        for idx in range(train_end - 1):
             if samples[idx] is None:
                 continue
             act = dqn.choose_action(idx, last_store)
@@ -35,10 +43,12 @@ def run():
             sim.show_act(idx, act)
 
 
-def test():
+def test(start, end):
+    log.info('test epoch! start %s end %s!!!!!!!!!!!!!!!!!!!', start, end)
     store = 0
-    for idx in range(_split, len(samples)):
-        dqn.rand_gate = 1
+    sim.reset()
+    dqn.rand_gate = 1
+    for idx in range(start, end):
         act = dqn.choose_action(idx, store)
         store, reward = sim.step(idx, act)
         sim.show_act(idx, act)
@@ -50,7 +60,8 @@ if __name__ == '__main__':
     sim = Simulator(k_line)
     dqn = Dqn(act_num, samples, [obs_len, 6])
     rate = 6
-    _split = len(samples) // 10 * rate
+    split = len(samples) // 10 * rate
     # strain, stest = train_test_split(samples, 6)
-    run()
-    test()
+    run(split)
+    test(0, split)
+    test(split, len(samples))

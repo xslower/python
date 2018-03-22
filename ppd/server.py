@@ -114,42 +114,48 @@ def _merge_bid(binfo, bids):
     return binfo
 
 
+# 暂时只读第一页，
 def fetch_loan_list():
+    log.info('fetch loan list')
     bid_info_list = []
     page = 1
-    while True:
-        bids = api.get_loan_list(page)
-        if bids is None or len(bids) == 0:
-            return
-        # p_loan_list.multi_insert(*bids)
-        ids = get_not_aa_vals(bids, k_list_id)
-        # log.info('ids %s', ids)
-        if len(ids) == 0:
-            return
-        if len(ids) <= 10:
-            binfo = api.get_bid_info(ids)
+    # while True:
+    bids = api.get_loan_list(page)
+    if bids is None or len(bids) == 0:
+        log.info('empty list')
+        return
+    # p_loan_list.multi_insert(*bids)
+    ids = get_not_aa_vals(bids, k_list_id)
+    # log.info('ids %s', ids)
+    if len(ids) == 0:
+        log.info('all is AA bid. return')
+        return
+    if len(ids) <= 10:
+        binfo = api.get_bid_info(ids)
+        predict_bid(binfo)
+        log.info('predict done. now record the action')
+        binfo = _merge_bid(binfo, bids)
+        bid_info_list.extend(binfo)
+        log.info('record done.')
+        # break
+    else:
+        i = 0
+        while True:
+            start = i * api.page_limit
+            end = min(start + api.page_limit, len(ids))
+            if end <= start:
+                break
+            i += 1
+            # log.info('%d %d %d', i, start, end)
+            binfo = api.get_bid_info(ids[start:end])
+            if binfo is None or len(binfo) == 0:
+                continue
             predict_bid(binfo)
             binfo = _merge_bid(binfo, bids)
             bid_info_list.extend(binfo)
-            break
-        else:
-            i = 0
-            while True:
-                start = i * api.page_limit
-                end = min(start + api.page_limit, len(ids))
-                if end <= start:
-                    break
-                i += 1
-                # log.info('%d %d %d', i, start, end)
-                binfo = api.get_bid_info(ids[start:end])
-                if binfo is None or len(binfo) == 0:
-                    continue
-                predict_bid(binfo)
-                binfo = _merge_bid(binfo, bids)
-                bid_info_list.extend(binfo)
-        if len(bids) < 20:
-            break
-        page += 1
+        # if len(bids) < 20:
+        #     break
+        # page += 1
 
 
 # def deal_debt(binfo, succ_list, fail_list, bad_list):
@@ -308,10 +314,7 @@ def fetch_debt_list():
 
 
 def predict_bid(binfo, debt = False):
-    if debt:
-        id_key = api.k_debt_id
-    else:
-        id_key = api.k_list_id
+    id_key = api.k_list_id
     data_x = []
     ids = []
     for dic in binfo:
@@ -331,12 +334,9 @@ def predict_bid(binfo, debt = False):
     y_pred = config.svc.predict(data_x)
     for i in range(len(y_pred)):
         if y_pred[i] == 0:
-            if debt:
-                succ = try_buy_debt(ids[i])
-            else:
-                succ = try_buy_bid(ids[i], config.bid_amount)
+            succ = try_buy_bid(ids[i], config.bid_amount)
             if succ:
-                log.info('id: %s', ids[i])
+                log.info('buyed id: %s', ids[i])
             #     config.add_bid_count()
     log.info('predict: %s', y_pred)
 
@@ -384,6 +384,7 @@ def run():
         # config.limit_bid()
         log.info(time_plus.std_datetime())
         time.sleep(wait_sec)
+        log.info('wake up')
 
 
 def main():

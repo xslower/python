@@ -9,7 +9,7 @@ def dtype():
 
 class Dqn(object):
     def __init__(self, n_act, obs, obs_shape):
-        self.learn_rate = 0.2
+        self.learn_rate = 0.1
         self.decay = 0.9
         self.input_shape = obs_shape
         self.num_act = n_act
@@ -46,11 +46,12 @@ class Dqn(object):
 
     def _build_net(self, obs, store, scope):
         with tf.variable_scope(scope):
-            cnn1 = tf.layers.conv1d(obs, filters=16, kernel_size=5)
-            pool1 = tf.layers.max_pooling1d(cnn1, pool_size=2, strides=1)
-            cnn2 = tf.layers.conv1d(pool1, filters=16, kernel_size=5)
-            pool2 = tf.layers.max_pooling1d(cnn2, pool_size=2, strides=1)
-            x = pool2
+            cnn1 = tf.layers.conv1d(obs, filters=16, kernel_size=5, strides=2)
+            # pool1 = tf.layers.max_pooling1d(cnn1, pool_size=2, strides=1)
+            pool1 = cnn1
+            cnn2 = tf.layers.conv1d(pool1, filters=32, kernel_size=5, strides=2)
+            # pool2 = tf.layers.max_pooling1d(cnn2, pool_size=2, strides=1)
+            x = cnn2
             shape_x = x.get_shape().as_list()
             if len(shape_x) > 2:  # 自动把输入转为扁平
                 num = 1
@@ -60,7 +61,7 @@ class Dqn(object):
 
             x = tf.concat([x, tf.expand_dims(store, 1)], 1)
             # pool1 = tf.reshape(pool1, )
-            dnn = tf.layers.dense(x, 128, activation=tf.nn.relu)
+            dnn = tf.layers.dense(x, 256, activation=tf.nn.relu)
             state = tf.layers.dense(x, 1)
             adv = tf.layers.dense(dnn, self.num_act)
             out = state + (adv - tf.reduce_mean(adv, axis=1, keep_dims=True))
@@ -128,5 +129,5 @@ class Dqn(object):
 
         self.step += 1
         self._reset_samples()
-        self.increase_rand_gate()
+        # self.increase_rand_gate()
         return cost
