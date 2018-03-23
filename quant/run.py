@@ -1,7 +1,7 @@
 from header import *
 from sklearn import preprocessing
 
-import stock_data
+
 from stock_simulator import Simulator
 from rl_dqn import Dqn
 
@@ -32,7 +32,7 @@ def run(train_end):
         for idx in range(train_end - 1):
             if samples[idx] is None:
                 continue
-            act = dqn.choose_action(idx, last_store)
+            act = dqn.train_action(idx, last_store)
             store, reward = sim.step(idx, act)
             dqn.store_transition(idx, last_store, act, reward, next_store=store)
             last_store = store
@@ -49,7 +49,8 @@ def test(start, end):
     sim.reset()
     dqn.rand_gate = 1
     for idx in range(start, end):
-        act = dqn.choose_action(idx, store)
+        obs = samples[idx]
+        act = dqn.pred_action(obs, store)
         store, reward = sim.step(idx, act)
         sim.show_act(idx, act)
 
@@ -58,9 +59,9 @@ if __name__ == '__main__':
     scaler = preprocessing.StandardScaler()
     k_line, samples = stock_data.prepare_single(1)
     sim = Simulator(k_line)
-    dqn = Dqn(act_num, samples, [obs_len, 6])
-    rate = 6
+    rate = 5
     split = len(samples) // 10 * rate
+    dqn = Dqn(act_num, samples, k_line)
     # strain, stest = train_test_split(samples, 6)
     run(split)
     test(0, split)

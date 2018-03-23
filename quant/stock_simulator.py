@@ -6,7 +6,7 @@ from header import *
 class Simulator(object):
     def __init__(self, env, cash = 100000):
         self.total_cash = cash
-        self.action_space = ['buy', 'sell', 'wait']
+        self.action_space = ['sell', 'buy', 'wait']
         self.num_acts = len(self.action_space)
         self.stock_val = 0
         # 配置股票数据
@@ -14,7 +14,7 @@ class Simulator(object):
         self.reset()
 
     def _up(self, idx):
-        return self.env[idx][1]
+        return self.env[idx][stock_data.O_CLS_UP]
 
     def reset(self):
         self.cash = self.total_cash

@@ -42,7 +42,12 @@ def fetch_m_data(id):
         else:
             df.to_csv(file, header=None, mode='a')
 
-
+O_CLOSE = 0
+O_CLS_UP = 1
+O_HIG_UP = 2
+O_LOW_UP = 3
+O_TURE = 4
+O_VOLU = 5
 # 从csv文件中读取数据
 # 输出格式为：0-close, 1-close_up, 2-high_up, 3-low_up, 4-turn_over, 5-volume
 def load_file(id, no_stop = False):
@@ -71,11 +76,11 @@ def load_file(id, no_stop = False):
                 li[i] = float(li[i])
 
         today_close = li[I_CLOSE]
-        li[I_OPEN] = today_close
-        li[I_CLOSE] = divide(today_close, last_close) - 1
-        li[I_HIGH] = divide(li[I_HIGH], last_close) - 1
-        li[I_LOW] = divide(li[I_LOW], last_close) - 1
-
+        li[O_CLOSE] = today_close
+        li[O_CLS_UP] = divide(today_close, last_close) - 1
+        li[O_HIG_UP] = divide(li[I_HIGH], last_close) - 1
+        li[O_LOW_UP] = divide(li[I_LOW], last_close) - 1
+        # 换手和成交量不变
         last_close = today_close
         trade_data.append(li[1:7])
     # print(trade_data[:10], trade_data[-10:])

@@ -8,20 +8,22 @@ def dtype():
 
 
 class Dqn(object):
-    def __init__(self, n_act, obs, obs_shape):
+    def __init__(self, n_act, obs, k_line):
         self.learn_rate = 0.1
         self.decay = 0.9
-        self.input_shape = obs_shape
+        self.input_shape = np.shape(obs)[1:]
         self.num_act = n_act
         self.rand_gate = 0.0
         self.rand_gate_max = 0.9
+        self.search_table = np.zeros([len(obs), 2, 2], dtype=np.int16)
         self.obs = obs
+        self.k_line = k_line
+        self.step = 1
         # print('convert ok')
         self._build_dqn()
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
-        self.batch_size = 5
-        self.step = 1
+        # self.batch_size = 5
         self._reset_samples()
 
     def _reset_samples(self):
@@ -46,10 +48,10 @@ class Dqn(object):
 
     def _build_net(self, obs, store, scope):
         with tf.variable_scope(scope):
-            cnn1 = tf.layers.conv1d(obs, filters=16, kernel_size=5, strides=2)
+            cnn1 = tf.layers.conv1d(obs, filters=16, kernel_size=5, strides=2, kernel_initializer=tf.random_normal_initializer(0, 0.1), bias_initializer=tf.constant_initializer(0.1))
             # pool1 = tf.layers.max_pooling1d(cnn1, pool_size=2, strides=1)
             pool1 = cnn1
-            cnn2 = tf.layers.conv1d(pool1, filters=32, kernel_size=5, strides=2)
+            cnn2 = tf.layers.conv1d(pool1, filters=32, kernel_size=5, strides=2, kernel_initializer=tf.random_normal_initializer(0, 0.1), bias_initializer=tf.constant_initializer(0.1))
             # pool2 = tf.layers.max_pooling1d(cnn2, pool_size=2, strides=1)
             x = cnn2
             shape_x = x.get_shape().as_list()
@@ -61,7 +63,7 @@ class Dqn(object):
 
             x = tf.concat([x, tf.expand_dims(store, 1)], 1)
             # pool1 = tf.reshape(pool1, )
-            dnn = tf.layers.dense(x, 256, activation=tf.nn.relu)
+            dnn = tf.layers.dense(x, 256, activation=tf.nn.relu, kernel_initializer=tf.random_normal_initializer(0, 0.1), bias_initializer=tf.constant_initializer(0.1))
             state = tf.layers.dense(x, 1)
             adv = tf.layers.dense(dnn, self.num_act)
             out = state + (adv - tf.reduce_mean(adv, axis=1, keep_dims=True))
@@ -100,14 +102,46 @@ class Dqn(object):
         self.l_reward.append(reward)
         self.l_next_store.append(next_store)
 
-    def choose_action(self, idx, store):
-        if np.random.uniform() < self.rand_gate:
-            obs = self.obs[idx][np.newaxis, :]
-            store = [store]
-            acts = self.sess.run(self.q_eval, feed_dict={self.k_line: obs, self.store: store})
-            act = np.argmax(acts)  # 这里不指定纬度，[[0,1,2]]->2
-        else:
+    def _init_st(self):
+        up_idx = stock_data.O_CLS_UP
+        for i in range(len(self.search_table) - 1):
+            if self.k_line[i][up_idx] > 0 and self.k_line[i + 1][up_idx] > 0:
+                # 今明两天都上涨，则持股今天无需探索卖出动作
+                self.search_table[i][1][SELL] = -1
+            elif self.k_line[i][up_idx] < 0 and self.k_line[i + 1][up_idx] < 0:
+                # 今明两天都下跌，则持币今天无需探索买入动作
+                self.search_table[i][0][BUY] = -1
+
+    def train_action(self, idx, store):
+        # 在训练时搜索探索空间的选择
+        if self.search_table[idx][store][SELL] == -1:
+            return BUY
+        if self.search_table[idx][store][BUY] == -1:
+            return SELL
+        if np.sum(self.search_table[idx][store]) < 30:
+            # 前期全部使用随机
             act = np.random.randint(0, self.num_act)
+        else:
+            if np.random.uniform() < self.rand_gate:
+                obs = self.obs[idx][np.newaxis, :]
+                run_store = [store]
+                acts = self.sess.run(self.q_eval, feed_dict={self.k_line: obs, self.store: run_store})
+                act = np.argmax(acts)
+                # acts = np.squeeze(acts)
+                # # 如果两个act的reward差距过大，则不再探索
+                # if abs(acts[0]-acts[1]) > 2.0:
+            else:
+                act = np.random.randint(0, self.num_act)
+        self.search_table[idx][store][act] += 1
+        return act
+
+    def pred_action(self, obs, store):
+        # 用于eval和pred的act选择
+        # obs = self.obs[idx][np.newaxis, :]
+        obs = obs[np.newaxis, :]
+        store = [store]
+        acts = self.sess.run(self.q_eval, feed_dict={self.k_line: obs, self.store: store})
+        act = np.argmax(acts)  # 这里不指定纬度，[[0,1,2]]->2
         return act
 
     def increase_rand_gate(self):
@@ -116,7 +150,7 @@ class Dqn(object):
             self.rand_gate = self.rand_gate_max
 
     def learn(self):
-        if self.step % 20 == 0:
+        if self.step % 10 == 0:
             self.sess.run(self.replace)
 
         q_predict = self.sess.run(self.q_pred, feed_dict={self.k_line: self.l_next_obs, self.store: self.l_next_store})
