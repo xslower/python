@@ -8,29 +8,62 @@ def dtype():
 
 
 class Dqn(object):
-    def __init__(self, n_act, obs):
+    def __init__(self, n_act, obs, k_line, d_line):
         self.learn_rate = 0.001
         self.decay = 0.95
         self.input_shape = np.shape(obs)[1:]
         self.num_act = n_act
         self.rand_gate = 0.0
         self.rand_gate_max = 0.9
-        # self.search_table = np.zeros([len(obs), 2, 2], dtype=np.int16)
-        # self.reward_table = np.zeros([len(obs), 2, 2], dtype=np.float32)
+        self.search_table = np.zeros([len(obs), 2, 2], dtype=np.int16)
+        self.reward_table = np.zeros([len(obs), 2, 2], dtype=np.float32)
         self.obs = obs
-        # self.k_line = k_line
+        self.k_line = k_line
+        self.d_line = d_line
         self.step = 1
+        # print('convert ok')
         self._build_dqn()
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
+        # self.batch_size = 5
         self._reset_samples()
-        # self.sim = Simulator(k_line)
+        self.sim = Simulator(k_line)
 
     def _reset_samples(self):
         # 只是占个位置
         self.l_obs, self.l_next_obs = [], []
         self.l_store, self.l_next_store = [], []
         self.l_act, self.l_reward = [], []
+
+    # 递归
+    # def calc_reward(self, idx, state):
+    #     if idx >= len(self.obs) - 1:
+    #         return 0
+    #     new_state1, reward1 = self.sim.step(idx, SELL, state)
+    #     self.reward_table[idx][state][SELL] = reward1 + self.decay * self.calc_reward(idx + 1, new_state1)
+    #     new_state2, reward2 = self.sim.step(idx, BUY, state)
+    #     self.reward_table[idx][state][BUY] = reward2 + self.decay * self.calc_reward(idx + 1, new_state2)
+    #     return max(reward1, reward2)
+    def _echo_table(self, table):
+        for i in range(len(table)):
+            li = table[i]
+            print(self.d_line[i], li[0], li[1], np.argmax(li[1]))
+
+    def calc_reward(self):
+        for i in range(len(self.k_line) - 1):
+            for s in range(2):
+                stock = s * 100
+                cash = (1 - s) * 100
+                for a in range(2):
+                    r, _s, _c = self.sim.reward(i, a, stock, cash)
+                    self.reward_table[i][s][a] = r
+        # self._echo_table(self.reward_table)
+        for i in range(len(self.k_line) - 1, 0, -1):
+            val = max(self.reward_table[i][1])
+            self.reward_table[i - 1][0][1] += self.decay * val
+            self.reward_table[i - 1][1][1] += self.decay * val
+        self._echo_table(self.reward_table)
+
 
     def _build_net_k(self, obs, scope):
         with tf.variable_scope(scope):
@@ -104,16 +137,38 @@ class Dqn(object):
         self.l_reward.append(reward)
         self.l_next_store.append(next_store)
 
+    def _init_st(self):
+        up_idx = stock_data.O_CLSE_UP
+        for i in range(len(self.search_table) - 1):
+            if self.k_line[i][up_idx] > 0 and self.k_line[i + 1][up_idx] > 0:
+                # 今明两天都上涨，则持股今天无需探索卖出动作
+                self.search_table[i][1][SELL] = -1
+            elif self.k_line[i][up_idx] < 0 and self.k_line[i + 1][up_idx] < 0:
+                # 今明两天都下跌，则持币今天无需探索买入动作
+                self.search_table[i][0][BUY] = -1
+
     def train_action(self, idx, store):
         # 在训练时搜索探索空间的选择
-        if np.random.uniform() < self.rand_gate:
-            obs = self.obs[idx]
-            act = self.pred_action(obs, store)
-            # # 如果两个act的reward差距过大，则不再探索
-            # if abs(acts[0]-acts[1]) > 2.0:
-        else:
+        if self.search_table[idx][store][SELL] == -1:
+            return BUY
+        if self.search_table[idx][store][BUY] == -1:
+            return SELL
+        if np.sum(self.search_table[idx][store]) < 30:
+            # 前期全部使用随机
             act = np.random.randint(0, self.num_act)
+        else:
+            if np.random.uniform() < self.rand_gate:
+                obs = self.obs[idx][np.newaxis, :]
+                run_store = [store]
+                acts = self.sess.run(self.q_eval, feed_dict={self.x: obs, self.store: run_store})
 
+                act = np.argmax(acts)
+                print('acts:', np.squeeze(acts))
+                # # 如果两个act的reward差距过大，则不再探索
+                # if abs(acts[0]-acts[1]) > 2.0:
+            else:
+                act = np.random.randint(0, self.num_act)
+        self.search_table[idx][store][act] += 1
         return act
 
     def pred_action(self, obs, store):
@@ -122,7 +177,6 @@ class Dqn(object):
         obs = obs[np.newaxis, :]
         store = [store]
         acts = self.sess.run(self.q_eval, feed_dict={self.x: obs, self.store: store})
-        print('acts:', np.squeeze(acts))
         act = np.argmax(acts)  # 这里不指定纬度，[[0,1,2]]->2
         return act
 
@@ -141,9 +195,9 @@ class Dqn(object):
         batch_indexes = np.arange(num, dtype=np.int32)
         # q_target[batch_indexes, self.l_act] = self.l_reward + self.decay * np.clip(np.max(q_predict, axis=1), a_min=0, a_max=10)
         pred_val = np.max(q_predict, axis=1)
-        # for i in range(num):
-        #     if self.l_act[i] == 0:
-        #         pred_val[i] = 0
+        for i in range(num):
+            if self.l_act[i] == 0:
+                pred_val[i] = 0
         q_target[batch_indexes, self.l_act] = self.l_reward + self.decay * pred_val
         print('q_target:', q_target)
 

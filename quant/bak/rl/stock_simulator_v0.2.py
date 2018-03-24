@@ -21,27 +21,23 @@ class Simulator(object):
 
     def reset(self):
         self.cash = self.total_cash
-        self.cost = self.cash
-        # self.day_idx = 0
+        self.day_idx = 0
         self.stock_val = 0
         self.last_act = -1
 
-    def reward(self, idx, act):
+    def reward(self, idx, act, stock, cash):
         fee = 0.995
         up = self._clse_up(idx)
         oup = self._open_up(idx)
-        stock = self.stock_val
-        cash = self.cash
-        reward = 0
-        if act == 0:  # 卖出
+        before = stock + cash
+        if act == 0: # 卖出
             if stock > 0:
                 stock *= (1 + oup)
                 cash += stock * fee
                 stock = 0
-                reward = 11
             else:  # do nothing
                 pass
-        else:  # 买入
+        else: # 买入
             # 持股价值更新
             stock *= (1 + up)
             if cash > 0:
@@ -50,18 +46,16 @@ class Simulator(object):
                 tmp_stock *= (1 + oup)
                 stock += tmp_stock
                 cash = 0
-            else:  # do nothing
+            else: # do nothing
                 pass
-        self.stock_val = stock
-        self.cash = cash
-        if reward > 0:
-            mini = cash if cash < self.cost else self.cost
-            reward = (cash - self.cost) / mini * 10
-        return reward
+        now = stock+cash
+        mini = now if now < before else before
+        reward = (now - before) / mini * 10
+        return reward, stock, cash
 
     def step(self, idx, act):
         store = act
-        reward = self.reward(idx, act)
+        reward, self.stock_val, self.cash = self.reward(idx, act, self.stock_val, self.cash)
         return store, reward
 
     def act_name(self, act):

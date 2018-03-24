@@ -42,16 +42,21 @@ def fetch_m_data(id):
         else:
             df.to_csv(file, header=None, mode='a')
 
+
 O_CLOSE = 0
-O_CLS_UP = 1
-O_HIG_UP = 2
-O_LOW_UP = 3
-O_TURE = 4
-O_VOLU = 5
+O_OPEN_UP = 1
+O_CLSE_UP = 2
+O_HIGH_UP = 3
+O_LOW_UP = 4
+O_TURN = 5
+O_VOLU = 6
+
+
 # 从csv文件中读取数据
-# 输出格式为：0-close, 1-close_up, 2-high_up, 3-low_up, 4-turn_over, 5-volume
+# 输出格式为：0-date, 1-close, 2-close_up, 3-high_up, 4-low_up, 5-turn_over, 6-volume
 def load_file(id, no_stop = False):
     I_DATE, I_OPEN, I_CLOSE, I_HIGH, I_LOW, I_TURN, I_VOL = 0, 1, 2, 3, 4, 5, 6
+
     def divide(a, b):
         if b == 0:
             b = 1
@@ -61,43 +66,56 @@ def load_file(id, no_stop = False):
     file = 'stock/%s.csv'
     csv_file = open(file % id, 'r')
     iter = csv.reader(csv_file)
-    trade_data = []
+    date_line = []
+    k_line = []
     last_close = 0
     for li in iter:
         if li[I_DATE] == '':
             continue
         # 去掉停盘数据
-        if no_stop and li[I_TURN] == 0:
-            continue
         for i in range(1, len(li)):
             if li[i] == '':
                 li[i] = 0
             else:
                 li[i] = float(li[i])
-
+        if no_stop and li[I_TURN] < 1:
+            continue
+        date_line.append(li[I_DATE])
+        new_li = np.zeros([6], dtype=np.float32)
         today_close = li[I_CLOSE]
-        li[O_CLOSE] = today_close
-        li[O_CLS_UP] = divide(today_close, last_close) - 1
-        li[O_HIG_UP] = divide(li[I_HIGH], last_close) - 1
-        li[O_LOW_UP] = divide(li[I_LOW], last_close) - 1
+        new_li[O_CLOSE] = today_close
+        new_li[O_OPEN_UP] = divide(li[I_OPEN], last_close) - 1
+        new_li[O_CLSE_UP] = divide(today_close, last_close) - 1
+        new_li[O_HIGH_UP] = divide(li[I_HIGH], last_close) - 1
+        new_li[O_LOW_UP] = divide(li[I_LOW], last_close) - 1
         # 换手和成交量不变
+        new_li[O_TURN] = li[I_TURN]
+        new_li[O_VOLU] = li[I_VOL]
         last_close = today_close
-        trade_data.append(li[1:7])
+        k_line.append(new_li)
     # print(trade_data[:10], trade_data[-10:])
     csv_file.close()
-    return trade_data
+    return date_line, np.array(k_line)
+
 
 obs_len = 300
+
+
 #
 def prepare_single(stock_id):
     ss = preprocessing.StandardScaler()
-    line = load_file(stock_id)
+    d_line, k_line = load_file(stock_id, True)
     samples = []
-    for i in range(obs_len, len(line)):
-        norm = ss.fit_transform(line[i-obs_len:i])
+    # for i in range(len(k_line)-1):
+    #     print(k_line[i:i+1])
+    #     ss.fit_transform(k_line[i:i+1, 1:])
+    # print(type(k_line[0][1]))
+    for i in range(obs_len, len(k_line)):
+        block = k_line[i - obs_len:i]
+        norm = ss.fit_transform(block)
         samples.append(norm)
-
-    return line[obs_len:], np.array(samples)
+    # print(k_line[:10], samples[0])
+    return d_line[obs_len:], k_line[obs_len:], np.array(samples)
 
 
 def prepare(stock_id, base_id = '000001.XSHG'):
@@ -137,7 +155,7 @@ def prepare(stock_id, base_id = '000001.XSHG'):
 
 def stock_id(id):
     id = str(id)
-    full_id = '0' * (6 - len(id)) + id +'.XSHE'
+    full_id = '0' * (6 - len(id)) + id + '.XSHE'
     return full_id
 
 

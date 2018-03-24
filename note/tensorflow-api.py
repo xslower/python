@@ -24,17 +24,17 @@ inputs = tf.Variable()
 weights = tf.Variable()
 bias = tf.Variable()
 
-tf.assign(x, y) # 把y赋值给x
-tf.multiply(x, y) # x与y相乘；矩阵相乘时，只能有一个为矩阵，按元素相乘
-tf.matmul(x, y) # 矩阵相乘，x与y的shape必须匹配
+tf.assign(x, y)  # 把y赋值给x
+tf.multiply(x, y)  # x与y相乘；矩阵相乘时，只能有一个为矩阵，按元素相乘
+tf.matmul(x, y)  # 矩阵相乘，x与y的shape必须匹配
 tf.argmax(y_label, axis=1)  # y_label是2维的，axis是操作哪一维。[[0,1,0],[1,0,0],[0,0,1]->[1,0,2]
 tf.expand_dims(tensor, axis=1)  # 把一个tensor扩充一维，axis=扩充第几维。例如[1,2,3]->[[1],[2],[3]] -> [[[1]],[[2]],[[3]]]。
-tf.squeeze(x) # 去掉长度=1的那些纬度，例：tf.shape(t) = [1,2,1,3,1,1] tf.shape(tf.squeeze(t))=[2,3]
-tf.reduce_mean(x, axis=0) # 延着指定纬度计算平均值x[mean][i][j]，不指定纬度则计算全部值的平均值
+tf.squeeze(x)  # 去掉长度=1的那些纬度，例：tf.shape(t) = [1,2,1,3,1,1] tf.shape(tf.squeeze(t))=[2,3]
+tf.reduce_mean(x, axis=0)  # 延着指定纬度计算平均值x[mean][i][j]，不指定纬度则计算全部值的平均值
 
 tf.range(0, 10, 0)  # 跟python 的range一样生成一个0到9的list
 tf.concat([x, y], axis=1)  # 把两个同shape的tensor合并到一起; axis延某一维合并[[0,1],[1,2]] + [[2,4],[3,6]] = [[0,1],[1,2],[2,4],[3,6]](axis=0) = [[0,1,2,4],[1,2,3,6]](axis=1)
-tf.slice(tensor, begin=[1,0,0], size=[1,1,3])  # 数组切片，begin是起始位置，size[i]是第i维需要的元素个数
+tf.slice(tensor, begin=[1, 0, 0], size=[1, 1, 3])  # 数组切片，begin是起始位置，size[i]是第i维需要的元素个数
 tf.strided_slice(tensor, [1], [6])  # = labels[1:6]，推荐直接使用py风格的tensor[1:6]
 
 tf.nn.lrn(input)  # 卷积层之后使用的一种数据归一化方法，可以把大的值变得相对更大，小值相对更小，防止在层数增加时权重衰减
@@ -60,10 +60,10 @@ nest.is_sequence(x)  # isinstance(x, collections.Sequence) 1维以上的数组�
 '''概率'''
 mean = 0.0
 stddev = 1.0
-norm = tf.distributions.Normal(loc=mean, scale=stddev) # 正态分布，loc=平均值，scale=标准差
-norm.sample(sample_shape=1) # 基于此分布生成一个目标shape的样本集
-norm.log_prob(value=1.1) # 貌似是计算此分布某点的概率密度
-norm.entropy() # Shannon entropy
+norm = tf.distributions.Normal(loc=mean, scale=stddev)  # 正态分布，loc=平均值，scale=标准差
+norm.sample(sample_shape=1)  # 基于此分布生成一个目标shape的样本集
+norm.log_prob(value=1.1)  # 貌似是计算此分布某点的概率密度
+norm.entropy()  # Shannon entropy
 
 """训练、建模："""
 '''损失函数：'''
@@ -77,14 +77,14 @@ tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.argmax(y_label, 1), log
 # 与上面不同。估计是为了维数多时方便接收数据的。
 # labels必须比logits少一维。一般为[0,1,2,1]每一位表示一个样本的类别
 # logits则是计算出来的输出。一般为[[1,0,0],[0,1,0],[0,0,1],[0,1,0]]。
-tf.squared_difference(x, y) #平方差(x-y)(x-y)
+tf.squared_difference(x, y)  # 平方差(x-y)(x-y)
 
 tf.nn.nce_loss(weights=x, biases=y, labels=y, inputs=x, num_sampled=10, num_classes=50000)  # cbow和skip-gram训练时打包的一个损失函数(目标函数)，详见word2vec理解
 
 '''优化'''
 lr = 0.1
-tf.train.GradientDescentOptimizer(learning_rate=lr, use_locking=True) # 基本的随机梯度下降，use_locking不知道干嘛
-tf.train.AdamOptimizer(learning_rate=lr, beta1=0.9, beta2=0.99) # 后面两个是动量的衰减
+tf.train.GradientDescentOptimizer(learning_rate=lr, use_locking=True)  # 基本的随机梯度下降，use_locking不知道干嘛
+tf.train.AdamOptimizer(learning_rate=lr, beta1=0.9, beta2=0.99)  # 后面两个是动量的衰减
 
 tf.train.MonitoredTrainingSession(checkpoint_dir='dir', hooks=[], config=tf.ConfigProto(log_device_placement=True))
 # 根据参数创建一个MonitoredSession对象。其是个很好用的工具，可以自行把summary和checkpoing记录到指定的目录下，而且可以自行维护所有线程。
@@ -96,14 +96,13 @@ tf.train.MonitoredTrainingSession(checkpoint_dir='dir', hooks=[], config=tf.Conf
 """ 各类网络："""
 tf.layers.dense(inputs, units=32, activation=tf.nn.relu)
 '''cnn'''
-tf.layers.conv1d(inputs=inputs, filters=64, kernel_size=3, strides=1) # filters是隐藏单元数
-tf.layers.conv2d(inputs=inputs, filters=32, kernel_size=[3,4], strides=(1,1)) # filters同上，kernel_size=窗口大小，改为2维的；strides也一样
+tf.layers.conv1d(inputs=inputs, filters=64, kernel_size=3, strides=1)  # filters是隐藏单元数
+tf.layers.conv2d(inputs=inputs, filters=32, kernel_size=[3, 4], strides=(1, 1))  # filters同上，kernel_size=窗口大小，改为2维的；strides也一样
 
 tf.nn.conv2d(inputs, weights, strides=[1, 2, 2, 1], padding='SAME')  # stride=在input各个纬度上的步长，[不同的样本, 宽, 高, 深]，第一纬为不同的样本，步长只能=1，最后一纬=深度，也只能=1；padding=SAME就是保持大小，边上缺少的填充0，VALID=不填充
 # 池化层
-tf.layers.max_pooling1d(inputs, pool_size=2, strides=1) # pool_size=池化窗口
+tf.layers.max_pooling1d(inputs, pool_size=2, strides=1)  # pool_size=池化窗口
 tf.nn.max_pool(inputs, ksize=[1, 1, 1, 1], strides=[1, 2, 2, 1], padding='SAME')  # 其它参数同上，ksize的格式很奇葩与stride相同[1,2,2,1]。[不同的样本, 宽, 高, 深]
-
 
 '''rnn'''
 last_state = tf.Variable()
