@@ -1,18 +1,77 @@
-import tushare as ts
+# import tushare as ts
 # import tensorflow as tf
 from sklearn import preprocessing
 import csv, pickle
 import numpy as np
 
 
-# tf.nn.l2_normalize()
-# tf.layers.batch_normalization()
+class Label(object):
+    def __init__(self, k_line, d_line):
+        self.k_line = k_line
+        self.d_line = d_line
+        self.reward_table = np.zeros((len(k_line), 2, 2), dtype=np.float32)
+        self.up_table = np.zeros((len(k_line),), dtype=np.float32)
+        self.decay = 0.9
 
-# fm = ts.get_stock_basics()
-# fm.to_csv('data/stock_index.csv')
-# ts.get_hist_data('600848', )
-# fm = ts.get_index()
-# fm.to_csv('data/index.csv')
+    def _clse_up(self, idx):
+        up = self.k_line[idx][O_CLSE_UP]
+        return up
+
+    def _open_up(self, idx):
+        return self.k_line[idx][O_OPEN_UP]
+
+    def reward(self, idx, state, act):
+        fee = -0.005
+        up = self._clse_up(idx)
+        oup = self._open_up(idx)
+        if state == 0:
+            if act == 0:
+                r = 0
+            else:
+                r = fee + (up - oup)
+        else:
+            if act == 0:
+                r = fee + oup
+            else:
+                r = up
+        return r * 10
+
+    def _echo_rt(self, table):
+        for i in range(len(table)):
+            li = table[i]
+            print(self.d_line[i], li[0], li[1], np.argmax(li[1]))
+
+    def calc_reward(self):
+        for i in range(len(self.k_line) - 1):
+            for s in range(2):
+                for a in range(2):
+                    r = self.reward(i, s, a)
+                    self.reward_table[i][s][a] = r
+        # self._echo_table(self.reward_table)
+        for i in range(len(self.k_line) - 1, 0, -1):
+            stock = max(self.reward_table[i][1])
+            cash = max(self.reward_table[i][0])
+            self.reward_table[i - 1][0][1] += self.decay * stock
+            self.reward_table[i - 1][1][1] += self.decay * stock
+            self.reward_table[i - 1][0][0] += self.decay * cash
+            self.reward_table[i - 1][1][0] += self.decay * cash
+        self._echo_rt(self.reward_table)
+
+    def _echo_ut(self, up):
+        for i in range(len(up)):
+            print(self.d_line[i], up[i])
+
+    def calc_up(self):
+        for i in range(len(self.k_line)):
+            up = self.k_line[i][O_CLSE_UP]
+            self.up_table[i] = up * 1000
+        decay = 0.95
+        for i in range(len(self.k_line) - 1, 0, -1):
+            up = self.up_table[i]
+            self.up_table[i - 1] += decay * up
+
+        # self._echo_ut(self.up_table)
+
 
 def fetch_stock_data(id):
     for i in range(1993, 2019):
@@ -81,7 +140,7 @@ def load_file(id, no_stop = False):
         if no_stop and li[I_TURN] < 1:
             continue
         date_line.append(li[I_DATE])
-        new_li = np.zeros([6], dtype=np.float32)
+        new_li = np.zeros([O_VOLU + 1], dtype=np.float32)
         today_close = li[I_CLOSE]
         new_li[O_CLOSE] = today_close
         new_li[O_OPEN_UP] = divide(li[I_OPEN], last_close) - 1

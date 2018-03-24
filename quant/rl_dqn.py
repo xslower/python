@@ -10,7 +10,7 @@ def dtype():
 class Dqn(object):
     def __init__(self, n_act, obs):
         self.learn_rate = 0.001
-        self.decay = 0.95
+        self.decay = 0.9
         self.input_shape = np.shape(obs)[1:]
         self.num_act = n_act
         self.rand_gate = 0.0
@@ -48,11 +48,12 @@ class Dqn(object):
 
     def _build_net(self, obs, store, scope):
         bias_initer = tf.constant_initializer(0.01)
+        kernel_initer = tf.random_normal_initializer(0, 0.1)
         with tf.variable_scope(scope):
-            cnn1 = tf.layers.conv1d(obs, filters=16, kernel_size=5, strides=1, kernel_initializer=tf.random_normal_initializer(0, 0.1), bias_initializer=bias_initer)
+            cnn1 = tf.layers.conv1d(obs, filters=16, kernel_size=5, strides=1, kernel_initializer=kernel_initer, bias_initializer=bias_initer)
             pool1 = tf.layers.max_pooling1d(cnn1, pool_size=2, strides=1)
             # pool1 = cnn1
-            cnn2 = tf.layers.conv1d(pool1, filters=32, kernel_size=5, strides=1, kernel_initializer=tf.random_normal_initializer(0, 0.1), bias_initializer=bias_initer)
+            cnn2 = tf.layers.conv1d(pool1, filters=32, kernel_size=5, strides=1, kernel_initializer=kernel_initer, bias_initializer=bias_initer)
             pool2 = tf.layers.max_pooling1d(cnn2, pool_size=2, strides=1)
             # x = cnn2
             x = pool2
@@ -65,8 +66,8 @@ class Dqn(object):
 
             x = tf.concat([x, tf.expand_dims(store, 1)], 1)
             # pool1 = tf.reshape(pool1, )
-            dnn = tf.layers.dense(x, 256, activation=tf.nn.relu, kernel_initializer=tf.random_normal_initializer(0, 0.1), bias_initializer=bias_initer)
-            state = tf.layers.dense(x, 1)
+            dnn = tf.layers.dense(x, 256, activation=tf.nn.relu, kernel_initializer=kernel_initer, bias_initializer=bias_initer)
+            state = tf.layers.dense(dnn, 1)
             adv = tf.layers.dense(dnn, self.num_act)
             out = state + (adv - tf.reduce_mean(adv, axis=1, keep_dims=True))
         return out
@@ -122,7 +123,7 @@ class Dqn(object):
         obs = obs[np.newaxis, :]
         store = [store]
         acts = self.sess.run(self.q_eval, feed_dict={self.x: obs, self.store: store})
-        print('acts:', np.squeeze(acts))
+        # print('acts:', np.squeeze(acts))
         act = np.argmax(acts)  # 这里不指定纬度，[[0,1,2]]->2
         return act
 
@@ -144,8 +145,10 @@ class Dqn(object):
         # for i in range(num):
         #     if self.l_act[i] == 0:
         #         pred_val[i] = 0
+        # q_target /= 2 # 防止q值无限增大
         q_target[batch_indexes, self.l_act] = self.l_reward + self.decay * pred_val
-        print('q_target:', q_target)
+        if self.step % 10 == 0:
+            print('q_target:', q_target)
 
         _, cost = self.sess.run([self.train_op, self.loss], feed_dict={self.x: self.l_obs, self.store: self.l_store, self.q_target: q_target})
 

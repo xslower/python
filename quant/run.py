@@ -22,13 +22,10 @@ def run(train_end):
         sim.reset()
         last_store = 0
         log.info('epoch %s', epoch)
-        if epoch < 10:
-            dqn.rand_gate = 0.0
-        else:
-            if epoch % 4 == 0:
-                dqn.rand_gate = 1
-            else:
-                dqn.rand_gate = 0.5
+            # if epoch % 4 == 0:
+            #     dqn.rand_gate = 1
+            # else:
+            #     dqn.rand_gate = 0.5
         for idx in range(train_end - 1):
             if samples[idx] is None:
                 continue
@@ -38,6 +35,8 @@ def run(train_end):
             last_store = store
             if idx % 10 == 0:
                 cost = dqn.learn()
+                if epoch > 10:
+                    dqn.increase_rand_gate()
                 log.info('cost: %s', cost)
             # if epoch > 2:
             sim.show_act(d_line[idx], act)
@@ -60,9 +59,10 @@ def test(start, end):
 
 if __name__ == '__main__':
     scaler = preprocessing.StandardScaler()
-    d_line, k_line, samples = stock_data.prepare_single(1)
-    # print(type(samples[0][0][1]))
-    # exit(0)
+    d_line, k_line, samples = stock_data.prepare_single(5)
+    label = stock_data.Label(k_line, d_line)
+    label.calc_up()
+    exit(0)
     sim = Simulator(k_line)
     rate = 5
     split = len(samples) // 10 * rate

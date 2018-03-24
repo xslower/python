@@ -27,7 +27,7 @@ class Simulator(object):
         self.last_act = -1
 
     def reward(self, idx, act):
-        fee = 0.995
+        fee = 0.99
         up = self._clse_up(idx)
         oup = self._open_up(idx)
         stock = self.stock_val
@@ -38,25 +38,24 @@ class Simulator(object):
                 stock *= (1 + oup)
                 cash += stock * fee
                 stock = 0
-                reward = 11
+                mini = cash if cash < self.cost else self.cost
+                reward = (cash - self.cost) / mini * 10
             else:  # do nothing
                 pass
         else:  # 买入
             # 持股价值更新
             stock *= (1 + up)
             if cash > 0:
+                self.cost = cash
                 tmp_stock = cash * fee
                 # if up < 0:
-                tmp_stock *= (1 + oup)
+                tmp_stock *= (1 + up - oup)
                 stock += tmp_stock
                 cash = 0
             else:  # do nothing
                 pass
         self.stock_val = stock
         self.cash = cash
-        if reward > 0:
-            mini = cash if cash < self.cost else self.cost
-            reward = (cash - self.cost) / mini * 10
         return reward
 
     def step(self, idx, act):

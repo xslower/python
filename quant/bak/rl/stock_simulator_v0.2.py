@@ -42,8 +42,8 @@ class Simulator(object):
             stock *= (1 + up)
             if cash > 0:
                 tmp_stock = cash * fee
-                # if up < 0:
-                tmp_stock *= (1 + oup)
+                # 开盘点买入，当天涨幅=close-open
+                tmp_stock *= (1 + up - oup)
                 stock += tmp_stock
                 cash = 0
             else: # do nothing

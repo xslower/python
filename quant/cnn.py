@@ -4,102 +4,102 @@ import sys
 sys.path.append('../lib')
 from header import *
 import tensorflow as tf
-import tf_framework as fw
 import pickle
-import svc
 from sklearn import preprocessing
 
 
-def train_test_split(dx, dy):
-    # x = np.array(dx)
-    # y = np.array(dy)
-    x = dx
-    y = dy
-    pos = int(len(x) / 10 * 8)
-    return x[:pos], x[pos:], y[:pos], y[pos:]
+def dt():
+    return tf.float32
 
 
-def reshape_y(y):
-    reshaped = []
-    for i in range(len(y)):
-        row = [0, 0]
-        row[y[i]] = 1
-        # reshaped[i][y[i]] = 1
-        reshaped.append(row)
-    return reshaped
+class EvalNet(object):
+    def __init__(self, obs, labels, d_line, train_rate = 5):
+        self.learn_rate = 0.5
+        self.lr_decay = 0.9
+        self.obs = obs
+        self.labels = labels
+        self.d_line = d_line
+        self.input_shape = np.shape(obs[0])
+        self.batch_size = 50
+        self.epoch = 10
+        self.train_split = len(obs) // 10 * train_rate
+        self.step = tf.Variable(0, trainable=False)
+        self._define_train()
+        self.sess = tf.Session()
+        self.sess.run(tf.global_variables_initializer())
 
+    def _infer(self, batch_x, scope = 'cnn'):
+        bias_initer = tf.constant_initializer(0.1)
+        kernel_initer = tf.random_normal_initializer(0, 0.5)
+        with tf.variable_scope(scope):
+            cnn1 = tf.layers.conv1d(batch_x, filters=16, kernel_size=5, strides=1, kernel_initializer=kernel_initer, bias_initializer=bias_initer)
+            pool1 = tf.layers.max_pooling1d(cnn1, pool_size=2, strides=1)
+            # pool1 = cnn1
+            cnn2 = tf.layers.conv1d(pool1, filters=32, kernel_size=5, strides=1, kernel_initializer=kernel_initer, bias_initializer=bias_initer)
+            pool2 = tf.layers.max_pooling1d(cnn2, pool_size=2, strides=1)
+            # x = cnn2
+            x = pool2
+            # d1 = tf.layers.dense(batch_x, units=256)
+            shape_x = x.get_shape().as_list()
+            if len(shape_x) > 2:  # 自动把输入转为扁平
+                num = 1
+                for i in range(1, len(shape_x)):
+                    num *= shape_x[i]
+                x = tf.reshape(x, [-1, num])
 
-def shape_back(y):
-    shaped = [0] * len(y)
-    for i in range(len(y)):
-        if y[i][1] == 1:
-            shaped[i] = 1
-    return shaped
+            dn1 = tf.layers.dense(x, 128, activation=tf.nn.relu, kernel_initializer=kernel_initer, bias_initializer=bias_initer)
+            dn2 = tf.layers.dense(dn1, 128, activation=tf.nn.relu, kernel_initializer=kernel_initer, bias_initializer=bias_initer)
+            q = tf.layers.dense(dn1, 1)
+        return q
 
+    def _define_train(self):
+        self.batch_x = tf.placeholder(dt(), [None, *self.input_shape], name='batch_x')
+        self.batch_y = tf.placeholder(dt(), [None], name='label_y')
+        self.eval = self._infer(self.batch_x)
+        sd = tf.squared_difference(x=self.eval, y=self.batch_y)
+        # self.loss = tf.reduce_mean()
+        self.loss = tf.reduce_mean(tf.where(tf.greater_equal(self.batch_y, 0),
+            tf.where(tf.greater_equal(self.eval, self.batch_y), sd/2, sd * 100),
+            tf.where(tf.less_equal(self.eval, self.batch_y), sd/2, sd * 100)))
+        lr = tf.train.exponential_decay(self.learn_rate, global_step=self.step, decay_steps=10, decay_rate=self.lr_decay)
+        self.train_op = tf.train.AdamOptimizer(lr).minimize(self.loss)
 
-def infer(x, regular=None):
-    tf.nn.
-    conv1 = fw.conv2d_layer(x, [1, 3, None, 16], 1)
-    pool1 = fw.pool_layer(conv1, [1, 2])
+    def train(self):
+        max_step = 100 * self.epoch
+        for i in range(max_step):
+            start = (i * self.batch_size) % self.train_split
+            end = min(start + self.batch_size, self.train_split)
+            batch_x = self.obs[start:end]
+            batch_y = self.labels[start:end]
+            self.sess.run([self.train_op], feed_dict={self.batch_x: batch_x, self.batch_y: batch_y})
+            if i % 10 == 0:
+                loss = self.sess.run(self.loss, feed_dict={self.batch_x: batch_x, self.batch_y: batch_y})
+                log.info('cost: %5.4f', loss)
 
-    layer1 = fw.full_layer(pool1, [None, 256], 3, regular)
-    out = fw.full_layer(layer1, [None, 2], 4, regular)
-    return out
+    def test(self):
+        log.info('test:')
+        pred = self.sess.run(self.eval, feed_dict={self.batch_x: self.obs[:self.train_split]})
+        for i in range(len(pred)):
+            log.info('%s pred:%.4f y:%.4f', self.d_line[i], pred[i], self.labels[i])
 
-
-class net_define:
-    reshape = True
-    output_num = 2
-    batch_size = 200
-    learning_rate_base = 0.8
-    learning_rate_decay = 0.99
-    regular_rate = 0.0001
-    training_steps = 5001
-    moving_avaerage_decay = 0.99
-
-    save_path = 'data/model/'
-    model_name = 'model.ckpt'
-
-
-def train(dx, dy):
-    scaler = preprocessing.StandardScaler()
-    scaler.fit(dx)
-    dx = scaler.transform(dx)
-    x_train, x_test, y_train, y_test = train_test_split(dx, dy)
-    # print(y_train)
-    y_train = reshape_y(y_train)
-    # print(y_train)
-    # exit()
-    nnm = fw.NnModel(inference=infer, input_shape=[1, len(dx[0]), 1])
-    nnm.set_attr(net_define)
-    nnm.train((x_train, y_train), {1: 200})
-    # nnm.train((x_train, y_train))
-    y_pred = nnm.predict(x_test)
-    # print(y_pred)
-    svc.precise(y_test, y_pred)
-
-
-def test():
-    a = [[0, 1], [0, 1], [0, 1]]
-    b = [[0, 1], [0.5, 0, 5], [0, 0]]
-    a = [0, 1]
-    b = [0.0, 1.0]
-    tb = tf.Variable(b)
-    sm_b = tf.nn.softmax(b)
-    sm_b2 = tf.clip_by_value(sm_b, 1e-10, 1.0)
-    log_b = tf.log(sm_b2)
-
-    loss = (a * tf.log(tf.clip_by_value(tf.nn.softmax(b), 1e-10, 1.0)))
-    with tf.Session() as sess:
-        tf.global_variables_initializer().run()
-        v = sess.run([loss, log_b, sm_b2, sm_b])
-        tv = tb.eval()
-        print(v, type(tv))
+    def predict(self):
+        log.info('predict:')
+        pred = self.sess.run(self.eval, feed_dict={self.batch_x: self.obs[self.train_split:]})
+        d_line = self.d_line[self.train_split:]
+        labels = self.labels[self.train_split:]
+        for i in range(len(pred)):
+            log.info('%s pred:%.4f y:%.4f', d_line[i], pred[i], labels[i])
+        p_cost = np.mean(np.square(labels - pred))
+        log.info('pred cost: %.4f', p_cost)
 
 
 if __name__ == '__main__':
     log.basicConfig(stream=sys.stdout, level=log.INFO, format='%(message)s')
-    # dx, dy = svc.init_data()
-    # svc.save_file(dx, dy)
-    dx, dy = svc.load_file()
-    train(dx, dy)
+    d_line, k_line, obs_x = stock_data.prepare_single(5)
+    label = stock_data.Label(k_line=k_line, d_line=d_line)
+    label.calc_up()
+    enet = EvalNet(obs_x, labels=label.up_table, d_line=d_line)
+    enet.train()
+    enet.test()
+    enet.predict()
+    enet.sess.close()
