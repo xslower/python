@@ -5,25 +5,32 @@ import csv, pickle
 import numpy as np
 
 
+def divide(a, b):
+    if b == 0:
+        b = 1
+    return a / b
+
 class Label(object):
     def __init__(self, k_line, d_line):
         self.k_line = k_line
         self.d_line = d_line
         self.reward_table = np.zeros((len(k_line), 2, 2), dtype=np.float32)
         self.up_table = np.zeros((len(k_line),), dtype=np.float32)
+        self.class_table = np.zeros((len(k_line),), dtype=np.int8)
         self.decay = 0.9
 
     def _clse_up(self, idx):
-        up = self.k_line[idx][O_CLSE_UP]
+        # up = self.k_line[idx][O_CLSE_UP]
+        if idx > 0:
+            up = divide(self.k_line[idx][O_CLOSE], self.k_line[idx-1][O_CLOSE])-1
+        else:
+            up = 0
         return up
-
-    def _open_up(self, idx):
-        return self.k_line[idx][O_OPEN_UP]
 
     def reward(self, idx, state, act):
         fee = -0.005
         up = self._clse_up(idx)
-        oup = self._open_up(idx)
+        oup = self._clse_up(idx)
         if state == 0:
             if act == 0:
                 r = 0
@@ -63,52 +70,41 @@ class Label(object):
 
     def calc_up(self):
         for i in range(len(self.k_line)):
-            up = self.k_line[i][O_CLSE_UP]
-            self.up_table[i] = up * 1000
-        decay = 0.95
+            up = self._clse_up(i)
+            self.up_table[i] = up * 100
+        decay = 0.98
         for i in range(len(self.k_line) - 1, 0, -1):
             up = self.up_table[i]
             self.up_table[i - 1] += decay * up
 
-        # self._echo_ut(self.up_table)
+            # self._echo_ut(self.up_table)
+    def calc_class(self):
+        self.calc_up()
+        for i in range(len(self.up_table)):
+            v = self.up_table[i]
+            if v < 0:
+                self.class_table[i] = 0
+            elif v < 20:
+                self.class_table[i] = 1
+            elif v < 40:
+                self.class_table[i] = 2
+            else:
+                self.class_table[i] = 3
 
-
-def fetch_stock_data(id):
-    for i in range(1993, 2019):
-        # start = '%d-12-31' % i
-        end = '%d-01-01' % i
-        # id = '000001'
-        # df = ts.get_hist_data(id, start=start, pause=1)
-        df = ts.get_hist_data(id, end=end, pause=1)
-        print(i, df)
-        file = 'data/stock/%s.csv' % id
-        if i == 1993:
-            df.to_csv(file)
-        else:
-            df.to_csv(file, header=None, mode='a')
-
-
-def fetch_m_data(id):
-    for i in range(1993, 2018):
-        start = '%d-12-31' % i
-        end = '%d-01-01' % i
-        # id = '000001'
-        df = ts.get_h_data(id, start=start, end=end, pause=1)
-        print(i, df)
-        file = 'data/stock/%s.csv' % id
-        if i == 1993:
-            df.to_csv(file)
-        else:
-            df.to_csv(file, header=None, mode='a')
+class Stock(object):
+    def __init__(self, x, y, dates):
+        self.obs_x = x
+        self.obs_y = y
+        self.dates = dates
 
 
 O_CLOSE = 0
-O_OPEN_UP = 1
-O_CLSE_UP = 2
-O_HIGH_UP = 3
-O_LOW_UP = 4
-O_TURN = 5
-O_VOLU = 6
+O_VOLU = 1
+# O_CLSE_UP = 1
+# O_HIGH_UP = 2
+# O_OPEN_UP = 1
+# O_LOW_UP = 4
+# O_TURN = 5
 
 
 # 从csv文件中读取数据
@@ -116,10 +112,6 @@ O_VOLU = 6
 def load_file(id, no_stop = False):
     I_DATE, I_OPEN, I_CLOSE, I_HIGH, I_LOW, I_TURN, I_VOL = 0, 1, 2, 3, 4, 5, 6
 
-    def divide(a, b):
-        if b == 0:
-            b = 1
-        return a / b
 
     id = stock_id(id)
     file = 'stock/%s.csv'
@@ -143,12 +135,13 @@ def load_file(id, no_stop = False):
         new_li = np.zeros([O_VOLU + 1], dtype=np.float32)
         today_close = li[I_CLOSE]
         new_li[O_CLOSE] = today_close
-        new_li[O_OPEN_UP] = divide(li[I_OPEN], last_close) - 1
-        new_li[O_CLSE_UP] = divide(today_close, last_close) - 1
-        new_li[O_HIGH_UP] = divide(li[I_HIGH], last_close) - 1
-        new_li[O_LOW_UP] = divide(li[I_LOW], last_close) - 1
+        # new_li[O_OPEN_UP] = divide(li[I_OPEN], last_close) - 1
+        # new_li[O_CLSE_UP] = divide(today_close, last_close) - 1
+        # new_li[O_HIGH_UP] = divide(li[I_HIGH], last_close) - 1
+        # new_li[O_LOW_UP] = divide(li[I_LOW], last_close) - 1
+        # new_li[O_HIGH_UP] = divide(li[I_HIGH], li[I_LOW]) - 1
         # 换手和成交量不变
-        new_li[O_TURN] = li[I_TURN]
+        # new_li[O_TURN] = li[I_TURN]
         new_li[O_VOLU] = li[I_VOL]
         last_close = today_close
         k_line.append(new_li)
@@ -164,17 +157,27 @@ obs_len = 300
 def prepare_single(stock_id):
     ss = preprocessing.StandardScaler()
     d_line, k_line = load_file(stock_id, True)
+    label = Label(k_line, d_line)
+    label.calc_class()
     samples = []
     # for i in range(len(k_line)-1):
     #     print(k_line[i:i+1])
     #     ss.fit_transform(k_line[i:i+1, 1:])
     # print(type(k_line[0][1]))
+    new_dl = []
+    y = []
     for i in range(obs_len, len(k_line)):
+        # up = divide(k_line[i][O_CLOSE], k_line[i-1][O_CLOSE]) - 1
+        # if abs(up) < 0.01:
+        #     continue
         block = k_line[i - obs_len:i]
         norm = ss.fit_transform(block)
+        # norm = block
         samples.append(norm)
+        new_dl.append(d_line[i])
+        y.append(label.class_table[i])
     # print(k_line[:10], samples[0])
-    return d_line[obs_len:], k_line[obs_len:], np.array(samples)
+    return Stock(np.array(samples), np.array(y), new_dl)
 
 
 def prepare(stock_id, base_id = '000001.XSHG'):
@@ -219,6 +222,7 @@ def stock_id(id):
 
 
 if __name__ == '__main__':
-    prepare('000001.XSHE')
+    d, k, s = prepare_single('000001')
+    print(d[:10], k[:10])
 # fetch_stock_data('600600')
 # fetch_m_data('000001')

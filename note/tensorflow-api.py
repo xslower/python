@@ -2,7 +2,7 @@
 tensorflow api文档理解+记录:
 ps: 感觉还是把代码相关的东西写在代码里方便
 """
-
+import numpy as np
 import tensorflow as tf
 
 # 逻辑op：
@@ -42,7 +42,7 @@ tf.nn.xw_plus_b(x, weights, bias)  # 计算x * w + b
 tf.transpose(tensor, perm=[1, 2, 0])  # 例如：[depth, height, width] to [height, width, depth]。perm指定哪些纬度交换，[1, 2, 0]=第一维成为最后一维二三维成为一二维。矩阵转秩
 batch_x, batch_y = tf.train.batch([x, y], batch_size=10)  # 貌似专门用来打包输入数据的，一般x,y为两个queue，此方法会把打包为每次输出batch_size大小的x,y
 
-tf.layers.batch_normalization(tensor)  # 貌似是在每层激活函数之前，给增加每一维增加一个sub学习率，来归一化数据，让其分布保持不变，以加速训练速度
+
 tf.nn.embedding_lookup(tensor, ids=[1, 2, 3])  # 这是根据ids里的索引idx，获取params里相应索引的值，
 with tf.control_dependencies([x, y]):  # 梳理op运行关系的，必须先运行一些op，才能运行后面的。经常用于先计算summary
     pass
@@ -81,8 +81,26 @@ tf.squared_difference(x, y)  # 平方差(x-y)(x-y)
 
 tf.nn.nce_loss(weights=x, biases=y, labels=y, inputs=x, num_sampled=10, num_classes=50000)  # cbow和skip-gram训练时打包的一个损失函数(目标函数)，详见word2vec理解
 
+# 不等价分类
+tf.reduce_mean(tf.where(tf.greater(x, y), x, y))
+# 对于逻辑and，可以嵌套使用where
+a = b = tf.Variable()
+tf.where(tf.greater(a, b), tf.where(tf.greater(x, y), x, y), y)
+
+
 '''优化'''
 lr = 0.1
+tf.train.exponential_decay(lr, global_step=x, decay_steps=10, decay_rate=0.99) # decay_steps 是隔多少步衰减一次
+
+# 批标准化，其实就是减去样本均值，除上样本方差，标准化后再引入新的均值和偏差
+mean, var = tf.nn.moments(x, axes=[1]) # axes=纬度数组=对哪些维的数据计算均值方差，例shape(x)=[2,3,4], axes=[1,2]时，输出shape=[2]，即对2、3维合起来计算均值方差.一般对axes=batch维，例如0
+offset = tf.Variable(0, dtype=tf.float32) # 虽然tf允许张量与标量加减，但这里需要的是一堆可训练的变量，所以最好还是声明一个与x长度相符的量
+scale = tf.Variable(1, dtype=tf.float32) # 同上
+tf.nn.batch_normalization(x, mean, var, offset=offset, scale=scale, variance_epsilon=1e-9) # 批标准化=scale * ((x-mean)/var) + offset
+tf.layers.batch_normalization(tensor)  # 貌似是在每层激活函数之前，给增加每一维增加一个sub学习率，来归一化数据，让其分布保持不变，以加速训练速度
+tf.layers.Dropout(rate=0.2) # rate 丢弃比率
+tf.nn.dropout(x, keep_prob=0.6) # keep_prob 保留比率
+
 tf.train.GradientDescentOptimizer(learning_rate=lr, use_locking=True)  # 基本的随机梯度下降，use_locking不知道干嘛
 tf.train.AdamOptimizer(learning_rate=lr, beta1=0.9, beta2=0.99)  # 后面两个是动量的衰减
 

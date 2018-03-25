@@ -133,10 +133,10 @@ def fetch_loan_list():
     if len(ids) <= 10:
         binfo = api.get_bid_info(ids)
         predict_bid(binfo)
-        log.info('predict done. now record the action')
-        binfo = _merge_bid(binfo, bids)
-        bid_info_list.extend(binfo)
-        log.info('record done.')
+        log.info('%s', 'predict done')
+        # binfo = _merge_bid(binfo, bids)
+        # bid_info_list.extend(binfo)
+        # log.info('%s', 'record done.')
         # break
     else:
         i = 0
@@ -149,10 +149,11 @@ def fetch_loan_list():
             # log.info('%d %d %d', i, start, end)
             binfo = api.get_bid_info(ids[start:end])
             if binfo is None or len(binfo) == 0:
-                continue
+                break
             predict_bid(binfo)
-            binfo = _merge_bid(binfo, bids)
-            bid_info_list.extend(binfo)
+            log.info('%s', 'predict done')
+            # binfo = _merge_bid(binfo, bids)
+            # bid_info_list.extend(binfo)
         # if len(bids) < 20:
         #     break
         # page += 1

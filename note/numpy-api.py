@@ -16,7 +16,7 @@ np.empty([2, 2], dtype=np.int32)  # 生成一个指定形状和类型的张量�
 np.zeros([3, 3], dtype=np.int8)  # 生成一个指定形状和类型的张量，全=0
 np.ones([2, 2, 2], dtype=np.float16)  # 生成指定形状和类型的张量，全=1
 np.amax(a, axis=1)  # =np.max() 求数组中最大的值，不带axis则flatten后求，带上axis则求某一维的最大值，例如np.max(x3d, axis=0) 则x3d[max][i][j] =x2d
-np.argmax(a, axis=1)  # 上面是求最大值，这个是取最大值所在的index。如果不指定axis，则会把a flatten之后取idx
+np.argmax(a, axis=1)  # 上面是求最大值，这个是取最大值所在的index。axis是计算指定维内的最大值的idx，如果不指定axis，则会把a flatten之后取idx.
 np.clip(a, a_min=1, a_max=10) # 把a中所有元素限制在min/max之间
 
 new_a = a[np.newaxis, :]  # 在最前面增加一个纬度。new_a=[[1,2,3]]
