@@ -69,12 +69,14 @@ class pp_client:
         i = 0
         while True:
             try:
-                r = requests.post(url, data=json.dumps(data), headers=headers)
+                r = requests.post(url, data=json.dumps(data), headers=headers, timeout=5)
                 if r is not None:
                     result = r.json()
                     return result
+                else:
+                    return 'returned empty'
             except Exception as e:
                 i += 1
                 if i > 3:
-                    raise e
+                    return 'out of retry'
         # print("receive_data:\n%s" % (result))

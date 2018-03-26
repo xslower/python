@@ -12,7 +12,6 @@ import time
 import time_plus
 import logging as log
 import numpy as np
-import scipy as sp
 from sklearn import svm, preprocessing
 from pp_client import pp_client as pcli
 from rsa_client import rsa_client as rsa
@@ -62,7 +61,7 @@ xslower_id = 'b92691f48df9496d973113d2ae89d5a1'  # xslower
 niude_id = '3695a8a3008342e18752b0e3da66bc99'  # niude
 
 
-class config:
+class config(object):
     bid_amount = 54
     open_ids = [xslower_id]
     users = []
@@ -159,7 +158,11 @@ def save_pid(pre):
 
 
 def get_dict_vals(dic, key):
-    if dic is None or key not in dic.keys():
+    if dic is None:
+        log.info('dic is none')
+        return []
+    elif key not in dic.keys():
+        log.info('dic: [%s], key: [%s]', dic, key)
         return []
     return dic[key]
 
