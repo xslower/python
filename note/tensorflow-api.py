@@ -87,6 +87,8 @@ tf.reduce_mean(tf.where(tf.greater(x, y), x, y))
 a = b = tf.Variable()
 tf.where(tf.greater(a, b), tf.where(tf.greater(x, y), x, y), y)
 
+#rnn的
+tf.contrib.seq2seq.sequence_loss() # 记得里面只是把3维的转为2维的计算交叉熵
 
 '''优化'''
 lr = 0.1
@@ -100,6 +102,8 @@ tf.nn.batch_normalization(x, mean, var, offset=offset, scale=scale, variance_eps
 tf.layers.batch_normalization(tensor)  # 貌似是在每层激活函数之前，给增加每一维增加一个sub学习率，来归一化数据，让其分布保持不变，以加速训练速度
 tf.layers.Dropout(rate=0.2) # rate 丢弃比率
 tf.nn.dropout(x, keep_prob=0.6) # keep_prob 保留比率
+cell = 'rnn cell'
+tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=0.6) # rnn的dropout
 
 tf.train.GradientDescentOptimizer(learning_rate=lr, use_locking=True)  # 基本的随机梯度下降，use_locking不知道干嘛
 tf.train.AdamOptimizer(learning_rate=lr, beta1=0.9, beta2=0.99)  # 后面两个是动量的衰减
