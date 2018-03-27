@@ -8,21 +8,27 @@ import numpy as np
 def divide(a, b):
     if b == 0:
         b = 1
-    return a / b
+
+    return (a - b) / min(a, b)
+
 
 class Label(object):
+    spliter = [-100, -30, -15, 0, 15, 30, 45, 60, 100]
+    num_class = len(spliter) - 1
+
     def __init__(self, k_line, d_line):
         self.k_line = k_line
         self.d_line = d_line
         self.reward_table = np.zeros((len(k_line), 2, 2), dtype=np.float32)
         self.up_table = np.zeros((len(k_line),), dtype=np.float32)
-        self.class_table = np.zeros((len(k_line),), dtype=np.int8)
+
+        self.class_table = np.zeros((len(k_line), self.num_class), dtype=np.int8)
         self.decay = 0.9
 
     def _clse_up(self, idx):
         # up = self.k_line[idx][O_CLSE_UP]
         if idx > 0:
-            up = divide(self.k_line[idx][O_CLOSE], self.k_line[idx-1][O_CLOSE])-1
+            up = divide(self.k_line[idx][O_CLOSE], self.k_line[idx - 1][O_CLOSE])
         else:
             up = 0
         return up
@@ -78,18 +84,21 @@ class Label(object):
             self.up_table[i - 1] += decay * up
 
             # self._echo_ut(self.up_table)
+
+    # 给一个概率分布，而不是唯一值
     def calc_class(self):
         self.calc_up()
+        spliter = self.spliter
         for i in range(len(self.up_table)):
             v = self.up_table[i]
-            if v < 0:
-                self.class_table[i] = 0
-            elif v < 20:
-                self.class_table[i] = 1
-            elif v < 40:
-                self.class_table[i] = 2
-            else:
-                self.class_table[i] = 3
+            for j in range(1, len(spliter)):
+                if spliter[j - 1] < v < spliter[j]:
+                    if j == 1:
+
+                    self.class_table[i][j-1] = 0.5
+
+                    break
+
 
 class Stock(object):
     def __init__(self, x, y, dates):
@@ -100,6 +109,9 @@ class Stock(object):
 
 O_CLOSE = 0
 O_VOLU = 1
+stock_file = 'data/stock/%s.csv'
+
+
 # O_CLSE_UP = 1
 # O_HIGH_UP = 2
 # O_OPEN_UP = 1
@@ -110,12 +122,10 @@ O_VOLU = 1
 # 从csv文件中读取数据
 # 输出格式为：0-date, 1-close, 2-close_up, 3-high_up, 4-low_up, 5-turn_over, 6-volume
 def load_file(id, no_stop = False):
-    I_DATE, I_OPEN, I_CLOSE, I_HIGH, I_LOW, I_TURN, I_VOL = 0, 1, 2, 3, 4, 5, 6
-
+    I_DATE, I_OPEN, I_CLOSE, I_HIGH, I_LOW, I_VOL = 0, 1, 2, 3, 4, 5
 
     id = stock_id(id)
-    file = 'stock/%s.csv'
-    csv_file = open(file % id, 'r')
+    csv_file = open(stock_file % id, 'r')
     iter = csv.reader(csv_file)
     date_line = []
     k_line = []
@@ -129,7 +139,7 @@ def load_file(id, no_stop = False):
                 li[i] = 0
             else:
                 li[i] = float(li[i])
-        if no_stop and li[I_TURN] < 1:
+        if no_stop and li[I_VOL] < 1:
             continue
         date_line.append(li[I_DATE])
         new_li = np.zeros([O_VOLU + 1], dtype=np.float32)
@@ -153,12 +163,18 @@ def load_file(id, no_stop = False):
 obs_len = 300
 
 
+def print_table(tb):
+    for i in range(len(tb)):
+        print(tb[i])
+
+
 #
 def prepare_single(stock_id):
     ss = preprocessing.StandardScaler()
     d_line, k_line = load_file(stock_id, True)
     label = Label(k_line, d_line)
     label.calc_class()
+    print(max(label.up_table), min(label.up_table))
     samples = []
     # for i in range(len(k_line)-1):
     #     print(k_line[i:i+1])

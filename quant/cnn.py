@@ -2,7 +2,7 @@
 import sys
 
 sys.path.append('../lib')
-from header import *
+from qhead import *
 import tensorflow as tf
 import pickle
 from sklearn import preprocessing
@@ -14,7 +14,7 @@ class EvalNet(object):
         self.lr_decay = 0.9
         self.obses = obses
         self.input_shape = np.shape(obses[0].obs_x[0])
-        self.num_y = 4
+        self.num_y = len(stock_data.Label.spliter) - 1
         self.batch_size = 100
         self.epoch = 10
         self.train_split = len(obses[0].obs_x) // 10 * train_rate
@@ -117,14 +117,13 @@ class EvalNet(object):
             for i in range(len(pred)):
                 log.info('%s pred:%d y:%d', d_line[i], pred[i], labels[i])
             precise(labels, pred, self.num_y)
-        # p_cost = np.mean(np.square(labels - pred))
-        # log.info('pred cost: %.4f', p_cost)
+            # p_cost = np.mean(np.square(labels - pred))
+            # log.info('pred cost: %.4f', p_cost)
 
 
 if __name__ == '__main__':
     log.basicConfig(stream=sys.stdout, level=log.INFO, format='%(message)s')
     # print(len(obs_x))
-    # exit(0)
     obses = []
     obses.append(stock_data.prepare_single(1))
     obses.append(stock_data.prepare_single(5))

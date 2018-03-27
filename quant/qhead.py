@@ -10,9 +10,15 @@ BUY = 1
 log.basicConfig(filename='log/learn.log', filemode="w", level=log.INFO, format='%(message)s')
 
 
-
 def dt():
     return tf.float32
+
+
+def divied(a, b):
+    if b == 0:
+        b = 1
+    return a / b
+
 
 def precise(y, y_pred, num_class):
     cnt = []
@@ -31,5 +37,4 @@ def precise(y, y_pred, num_class):
     if val == 0:
         val = 1
     for i in range(num_class):
-        log.info(cnt[i][i] / cnt[i][-1] * 100)
-
+        log.info(divied(cnt[i][i], cnt[i][-1]) * 100)
