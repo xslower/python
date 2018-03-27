@@ -85,6 +85,7 @@ class Label(object):
 
             # self._echo_ut(self.up_table)
 
+
     # 给一个概率分布，而不是唯一值
     def calc_class(self):
         self.calc_up()
@@ -93,10 +94,7 @@ class Label(object):
             v = self.up_table[i]
             for j in range(1, len(spliter)):
                 if spliter[j - 1] < v < spliter[j]:
-                    if j == 1:
-
-                    self.class_table[i][j-1] = 0.5
-
+                    self.class_table[i] = j - 1
                     break
 
 

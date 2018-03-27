@@ -1,7 +1,5 @@
 import sys
 
-sys.path.append('../../lib')
-
 import time
 
 import numpy as np
@@ -9,19 +7,10 @@ import tensorflow as tf
 
 from tensorflow.python.client import device_lib
 
+sys.path.append('../../lib')
+
 flags = tf.flags
 logging = tf.logging
-
-BASIC = "basic"
-CUDNN = "cudnn"
-BLOCK = "block"
-flags.DEFINE_string("model", "small", "A type of model. Possible options are: small, medium, large.")
-flags.DEFINE_string("data_path", 'data/data', "Where the training/test data is stored.")
-flags.DEFINE_string("save_path", 'data/models', "Model output directory.")
-flags.DEFINE_bool("use_fp16", False, "Train using 16-bit floats instead of 32bit floats")
-flags.DEFINE_integer("num_gpus", 0, "If larger than 1, Grappler AutoParallel optimizer will create multiple training replicas with each GPU running one replica.")
-flags.DEFINE_string("rnn_mode", BASIC, "The low level implementation of lstm cell: one of CUDNN, BASIC, and BLOCK, representing cudnn_lstm, basic_lstm, and lstm_block_cell classes.")
-FLAGS = flags.FLAGS
 
 
 def data_type():
@@ -29,7 +18,7 @@ def data_type():
 
 
 class StockInput():
-    def __init__(self, config, x, y, is_train = True, name = None):
+    def __init__(self, config, x, y, is_train=True, name=None):
         self.batch_size = batch_size = config.batch_size
         self.num_steps = num_steps = config.num_steps
         self.epoch_size = ((len(x) // batch_size) - 1)
@@ -48,9 +37,8 @@ class StockInput():
 
 
 class StockModel(object):
-    """The PTB model."""
 
-    def __init__(self, config, input_, is_training = True):
+    def __init__(self, config, input_, is_training=True):
         self._is_training = is_training
         self._input = input_
         self._rnn_params = None
@@ -67,14 +55,17 @@ class StockModel(object):
         #     inputs = tf.nn.dropout(inputs, config.keep_prob)
         output, state = self._build_rnn_graph_lstm(inputs, config, is_training)
 
-        softmax_w = tf.get_variable("softmax_w", [size, out_size], dtype=data_type())
+        softmax_w = tf.get_variable(
+            "softmax_w", [size, out_size], dtype=data_type())
         softmax_b = tf.get_variable("softmax_b", [out_size], dtype=data_type())
         logits = tf.nn.xw_plus_b(output, softmax_w, softmax_b)
         # Reshape logits to be a 3-D tensor for sequence loss
-        logits = tf.reshape(logits, [self.batch_size, self.num_steps, out_size])
+        logits = tf.reshape(
+            logits, [self.batch_size, self.num_steps, out_size])
 
         # Use the contrib sequence loss and average over the batches
-        loss = tf.contrib.seq2seq.sequence_loss(logits, input_.labels, tf.ones([self.batch_size, self.num_steps], dtype=data_type()), average_across_timesteps=False, average_across_batch=True)
+        loss = tf.contrib.seq2seq.sequence_loss(logits, input_.labels, tf.ones(
+            [self.batch_size, self.num_steps], dtype=data_type()), average_across_timesteps=False, average_across_batch=True)
 
         # Update the cost
         self._cost = tf.reduce_sum(loss)
@@ -85,11 +76,14 @@ class StockModel(object):
 
         self._lr = tf.Variable(0.0, trainable=False)
         tvars = tf.trainable_variables()
-        grads, _ = tf.clip_by_global_norm(tf.gradients(self._cost, tvars), config.max_grad_norm)
+        grads, _ = tf.clip_by_global_norm(tf.gradients(
+            self._cost, tvars), config.max_grad_norm)
         optimizer = tf.train.GradientDescentOptimizer(self._lr)
-        self._train_op = optimizer.apply_gradients(zip(grads, tvars), global_step=tf.train.get_or_create_global_step())
+        self._train_op = optimizer.apply_gradients(
+            zip(grads, tvars), global_step=tf.train.get_or_create_global_step())
 
-        self._new_lr = tf.placeholder(tf.float32, shape=[], name="new_learning_rate")
+        self._new_lr = tf.placeholder(
+            tf.float32, shape=[], name="new_learning_rate")
         self._lr_update = tf.assign(self._lr, self._new_lr)
 
     def _get_lstm_cell(self, config, is_training):
@@ -106,10 +100,12 @@ class StockModel(object):
         def make_cell():
             cell = self._get_lstm_cell(config, is_training)
             if is_training and config.keep_prob < 1:
-                cell = tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=config.keep_prob)
+                cell = tf.contrib.rnn.DropoutWrapper(
+                    cell, output_keep_prob=config.keep_prob)
             return cell
 
-        cell = tf.contrib.rnn.MultiRNNCell([make_cell() for _ in range(config.num_layers)], state_is_tuple=True)
+        cell = tf.contrib.rnn.MultiRNNCell(
+            [make_cell() for _ in range(config.num_layers)], state_is_tuple=True)
 
         self._initial_state = cell.zero_state(config.batch_size, data_type())
         state = self._initial_state
@@ -141,7 +137,8 @@ class StockModel(object):
         self._name = name
         ops = {self._name + "/cost": self._cost}
         if self._is_training:
-            ops.update(lr=self._lr, new_lr=self._new_lr, lr_update=self._lr_update)
+            ops.update(lr=self._lr, new_lr=self._new_lr,
+                       lr_update=self._lr_update)
             if self._rnn_params:
                 ops.update(rnn_params=self._rnn_params)
         for name, op in ops.items():
@@ -160,44 +157,16 @@ class StockModel(object):
             self._lr_update = tf.get_collection_ref("lr_update")[0]
             rnn_params = tf.get_collection_ref("rnn_params")
             if self._cell and rnn_params:
-                params_saveable = tf.contrib.cudnn_rnn.RNNParamsSaveable(self._cell, self._cell.params_to_canonical, self._cell.canonical_to_params, rnn_params, base_variable_scope="Model/RNN")
-                tf.add_to_collection(tf.GraphKeys.SAVEABLE_OBJECTS, params_saveable)
+                params_saveable = tf.contrib.cudnn_rnn.RNNParamsSaveable(
+                    self._cell, self._cell.params_to_canonical, self._cell.canonical_to_params, rnn_params, base_variable_scope="Model/RNN")
+                tf.add_to_collection(
+                    tf.GraphKeys.SAVEABLE_OBJECTS, params_saveable)
         self._cost = tf.get_collection_ref(self._name + "/cost")[0]
         num_replicas = FLAGS.num_gpus if self._name == "Train" else 1
-        self._initial_state = import_state_tuples(self._initial_state, self._initial_state_name, num_replicas)
-        self._final_state = import_state_tuples(self._final_state, self._final_state_name, num_replicas)
-
-    @property
-    def input(self):
-        return self._input
-
-    @property
-    def initial_state(self):
-        return self._initial_state
-
-    @property
-    def cost(self):
-        return self._cost
-
-    @property
-    def final_state(self):
-        return self._final_state
-
-    @property
-    def lr(self):
-        return self._lr
-
-    @property
-    def train_op(self):
-        return self._train_op
-
-    @property
-    def initial_state_name(self):
-        return self._initial_state_name
-
-    @property
-    def final_state_name(self):
-        return self._final_state_name
+        self._initial_state = import_state_tuples(
+            self._initial_state, self._initial_state_name, num_replicas)
+        self._final_state = import_state_tuples(
+            self._final_state, self._final_state_name, num_replicas)
 
 
 def export_state_tuples(state_tuples, name):
@@ -228,8 +197,6 @@ class SmallConfig(object):
     lr_decay = 0.5
     batch_size = 2
     out_size = 10
-    rnn_mode = BASIC
-
 
 class TestConfig(object):
     """Tiny config, for testing."""
@@ -245,10 +212,8 @@ class TestConfig(object):
     lr_decay = 0.5
     batch_size = 20
     vocab_size = 10000
-    rnn_mode = BLOCK
 
-
-def run_epoch(session, model, eval_op = None, verbose = False):
+def run_epoch(session, model, eval_op=None, verbose=False):
     """Runs the model on the given data."""
     start_time = time.time()
     costs = 0.0
@@ -273,47 +238,39 @@ def run_epoch(session, model, eval_op = None, verbose = False):
         iters += model.input.num_steps
 
         if verbose and step % (model.input.epoch_size // 10) == 10:
-            print("step: %.3f, cost: %.3f, speed: %.0f wps" % (step, costs, iters * model.input.batch_size / (time.time() - start_time)))
+            print("step: %.3f, cost: %.3f, speed: %.0f wps" % (
+                step, costs, iters * model.input.batch_size / (time.time() - start_time)))
 
     return np.exp(costs / iters)
-
-
-def get_config(mode = 'small'):
-    """Get model config."""
-    if mode == "small":
-        config = SmallConfig()
-    elif mode == "test":
-        config = TestConfig()
-    else:
-        raise ValueError("Invalid model: %s", mode)
-
-    return config
 
 
 import stock_data
 import tf_framework as fw
 
 
-def split_data(x, y, part = 8):
-    pos = len(x) // 10 * part
-    return x[:pos], x[pos:], y[:pos], y[pos:]
+class RnnEval(object):
+    def __init__(self, obses):
+        self._learn_rate = 0.01
+        self.obses = obses
+
+    def _build_cell(self):
 
 
-def main(_):
+def main():
     x, y = stock_data.prepare_single('000001.XSHE')
     train_x, valid_x, train_y, valid_y = split_data(x, y)
 
-    config = get_config()
-    eval_config = get_config()
     # eval_config.batch_size = 1
     # eval_config.num_steps = 1
 
     with tf.Graph().as_default():
-        initializer = tf.random_uniform_initializer(-config.init_scale, config.init_scale)
+        initializer = tf.random_uniform_initializer(
+            -config.init_scale, config.init_scale)
 
         with tf.name_scope("Train"):
             with tf.variable_scope("Model", reuse=None, initializer=initializer):
-                _input = StockInput(config, train_x, train_y, name='train input')
+                _input = StockInput(
+                    config, train_x, train_y, name='train input')
                 m = StockModel(is_training=True, config=config, input_=_input)
             tf.summary.scalar("Training Loss", m.cost)
             tf.summary.scalar("Learning Rate", m.lr)
@@ -323,7 +280,8 @@ def main(_):
             # eval_config.batch_size = v_input.batch_size
             # eval_config.num_steps = v_input.batch_len
             with tf.variable_scope("Model", reuse=True, initializer=initializer):
-                mvalid = StockModel(is_training=False, config=config, input_=v_input)
+                mvalid = StockModel(is_training=False,
+                                    config=config, input_=v_input)
             tf.summary.scalar("Validation Loss", mvalid.cost)
 
         models = {"Train": m, "Valid": mvalid}
@@ -339,18 +297,24 @@ def main(_):
         config_proto = tf.ConfigProto()
         with sv.managed_session(config=config_proto) as session:
             for i in range(config.max_max_epoch):
-                lr_decay = config.lr_decay ** max(i + 1 - config.max_epoch, 0.0)
+                lr_decay = config.lr_decay ** max(i +
+                                                  1 - config.max_epoch, 0.0)
                 m.assign_lr(session, config.learning_rate * lr_decay)
 
-                print("Epoch: %d Learning rate: %.3f" % (i + 1, session.run(m.lr)))
-                train_perplexity = run_epoch(session, m, eval_op=m.train_op, verbose=True)
-                print("Epoch: %d Train Perplexity: %.3f" % (i + 1, train_perplexity))
+                print("Epoch: %d Learning rate: %.3f" %
+                      (i + 1, session.run(m.lr)))
+                train_perplexity = run_epoch(
+                    session, m, eval_op=m.train_op, verbose=True)
+                print("Epoch: %d Train Perplexity: %.3f" %
+                      (i + 1, train_perplexity))
                 valid_perplexity = run_epoch(session, mvalid)
-                print("Epoch: %d Valid Perplexity: %.3f" % (i + 1, valid_perplexity))
+                print("Epoch: %d Valid Perplexity: %.3f" %
+                      (i + 1, valid_perplexity))
 
             if FLAGS.save_path:
                 print("Saving model to %s." % FLAGS.save_path)
-                sv.saver.save(session, FLAGS.save_path, global_step=sv.global_step)
+                sv.saver.save(session, FLAGS.save_path,
+                              global_step=sv.global_step)
 
 
 if __name__ == "__main__":
