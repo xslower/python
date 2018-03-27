@@ -1,5 +1,5 @@
 '''dqn '''
-from header import *
+from qhead import *
 from stock_simulator import Simulator
 
 

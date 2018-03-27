@@ -163,6 +163,20 @@ cell = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=3, num_units=90, input_size=95)
 outputs1, final_states1 = tf.nn.static_rnn(cell, inputs, initial_state=last_state)  #
 outputs2, final_states2 = tf.nn.dynamic_rnn(cell, inputs, initial_state=last_state)  # 跟static的区别貌似是接收的inputs形状不同，static接收的必须是相同batch_size的输入，而dynamic可以不同。
 
+
+'''模型数据变成与恢复'''
+#
+tf.global_variables(scope=None) # 这两个方法功能一样
+tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=None) # 都是取出tf图中collection里的定义的所有变量，指定scope则只取scope下的
+
+saver = tf.train.Saver(tf.global_variables(), max_to_keep=5) # max_to_keep是保留最近的几个checkpoint文件
+sess = tf.Session()
+step = tf.Variable()
+model_path = saver.save(sess, 'data/model-name', global_step=step)
+model_path2 = saver.last_checkpoints('data/')
+saver.restore(sess, model_path2)
+
+
 """
 tensorboard使用:
 """
