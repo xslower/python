@@ -3,7 +3,8 @@ import logging as log
 import tensorflow as tf
 import numpy as np
 import stock_data
-
+import sys
+sys.path.append('../lib')
 SELL = 0
 BUY = 1
 

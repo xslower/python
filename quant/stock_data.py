@@ -13,7 +13,7 @@ def divide(a, b):
 
 
 class Label(object):
-    spliter = [-100, -30, -15, 0, 15, 30, 45, 60, 100]
+    spliter = [-50, -30, -15, 0, 15, 30, 45, 60, 90]
     num_class = len(spliter) - 1
 
     def __init__(self, k_line, d_line):
@@ -21,8 +21,7 @@ class Label(object):
         self.d_line = d_line
         self.reward_table = np.zeros((len(k_line), 2, 2), dtype=np.float32)
         self.up_table = np.zeros((len(k_line),), dtype=np.float32)
-
-        self.class_table = np.zeros((len(k_line), self.num_class), dtype=np.int8)
+        self.class_table = np.zeros((len(k_line), self.num_class), dtype=np.float32)
         self.decay = 0.9
 
     def _clse_up(self, idx):
@@ -85,24 +84,63 @@ class Label(object):
 
             # self._echo_ut(self.up_table)
 
+    # 数值转为概率分布
+    def score_to_dis(self, score):
+        spliter = self.spliter
+        num = len(spliter) - 1
+        dis = np.zeros((num,), dtype=np.float32)
+        if score <= spliter[0]:
+            dis[0] = 0.9
+            dis[1] = 0.1
+            return dis
+        elif score > spliter[-1]:
+            dis[-1] = 0.9
+            dis[-2] = 0.1
+            return dis
+        for j in range(num):
+            lower, bigger = spliter[j:j + 2]
+            if lower < score <= bigger:
+                dis[j] = 0.5
+                r = (score - lower) / (bigger - lower)
+                bonus_rt = round(r * 0.5, 3)
+                bonus_lt = 0.5 - bonus_rt
+                if j == 0:
+                    dis[j] += bonus_lt
+                    dis[j + 1] += bonus_rt
+                elif j == num - 1:
+                    dis[j - 1] += bonus_lt
+                    dis[j] += bonus_rt
+                else:
+                    dis[j - 1] += bonus_lt
+                    dis[j + 1] += bonus_rt
+                break
+        return dis
 
     # 给一个概率分布，而不是唯一值
     def calc_class(self):
         self.calc_up()
-        spliter = self.spliter
         for i in range(len(self.up_table)):
             v = self.up_table[i]
-            for j in range(1, len(spliter)):
-                if spliter[j - 1] < v < spliter[j]:
-                    self.class_table[i] = j - 1
-                    break
+            dis = self.score_to_dis(v)
+            # print(v, dis)
+            self.class_table[i] = dis
 
 
 class Stock(object):
-    def __init__(self, x, y, dates):
-        self.obs_x = x
-        self.obs_y = y
-        self.dates = dates
+    def __init__(self, x, y, dates, spliter='2012-12-12'):
+        idx = 0
+        for i in range(len(dates)):
+            if dates[i] >= spliter:
+                idx = i
+                break
+        if idx == 0:
+            raise Exception('died stock')
+        self.train_x = x[:idx]
+        self.train_y = y[:idx]
+        self.train_date = dates[:idx]
+        self.test_x = x[idx:]
+        self.test_y = y[idx:]
+        self.test_date = dates[idx:]
 
 
 O_CLOSE = 0
@@ -172,7 +210,7 @@ def prepare_single(stock_id):
     d_line, k_line = load_file(stock_id, True)
     label = Label(k_line, d_line)
     label.calc_class()
-    print(max(label.up_table), min(label.up_table))
+    # print_table(label.class_table)
     samples = []
     # for i in range(len(k_line)-1):
     #     print(k_line[i:i+1])
@@ -189,7 +227,7 @@ def prepare_single(stock_id):
         # norm = block
         samples.append(norm)
         new_dl.append(d_line[i])
-        y.append(label.class_table[i])
+        y.append(label.up_table[i])
     # print(k_line[:10], samples[0])
     return Stock(np.array(samples), np.array(y), new_dl)
 

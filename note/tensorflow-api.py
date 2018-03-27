@@ -29,7 +29,7 @@ tf.multiply(x, y)  # x与y相乘；矩阵相乘时，只能有一个为矩阵，
 tf.matmul(x, y)  # 矩阵相乘，x与y的shape必须匹配
 tf.argmax(y_label, axis=1)  # y_label是2维的，axis是操作哪一维。[[0,1,0],[1,0,0],[0,0,1]->[1,0,2]
 tf.expand_dims(tensor, axis=1)  # 把一个tensor扩充一维，axis=扩充第几维。例如[1,2,3]->[[1],[2],[3]] -> [[[1]],[[2]],[[3]]]。
-tf.squeeze(x)  # 去掉长度=1的那些纬度，例：tf.shape(t) = [1,2,1,3,1,1] tf.shape(tf.squeeze(t))=[2,3]
+tf.squeeze(x, axis=None)  # 去掉长度=1的那些纬度，例：tf.shape(t) = [1,2,1,3,1,1] tf.shape(tf.squeeze(t))=[2,3], 如果指定axis，则axis维的len必须=1
 tf.reduce_mean(x, axis=0)  # 延着指定纬度计算平均值x[mean][i][j]，不指定纬度则计算全部值的平均值
 
 tf.range(0, 10, 0)  # 跟python 的range一样生成一个0到9的list
@@ -152,7 +152,7 @@ tf.contrib.rnn.LSTMBlockCell()  # 看代码+注释，貌似跟上面的实现基
 # 发现contrib下面的实现经常与nn下的差不多。
 
 # 多层rnn封装，把多个cell连接到一起，形成深层rnn
-multi_cell = tf.nn.rnn_cell.MultiRNNCell([cell] * 3)  # 先定义好每层的cell传入
+multi_cell = tf.nn.rnn_cell.MultiRNNCell([cell] * 3, state_is_tuple=True)  # 先定义好每层的cell传入
 output4, all_state = multi_cell(inputs, (new_state1, new_state2, new_state3))  # 状态是并行的，只在对应的层中流动；input->output是穿过所有层
 
 # cudnn封装，多层lstm，上面的可以手动指定每一层的cell具体实现，这里只能使用标准lstm
