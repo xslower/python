@@ -8,6 +8,8 @@ a = np.array([[1], [2], [3]])
 b = np.array([[2], [3], [4]])
 np.hstack((a, b))  # array([[1, 2],[2, 3],[3, 4]])
 np.append(a, [4], axis=None)  # 前后两个参数的shape必须相同； axis=None会把前后两个参数flatten掉，然后连在一起；axis=i会把第i维连接，类似tf.concat
+np.concatenate([a, b], axis=0) # 与上面相同
+
 np.insert(a, 1, [5])  # 在位置1之前插入5
 
 # 生成一个指定范围的数组

@@ -24,6 +24,11 @@ inputs = tf.Variable()
 weights = tf.Variable()
 bias = tf.Variable()
 
+tf.get_variable_scope()  # 貌似获取当前变量的scope
+tf.get_variable(name='a', shape=[2, 2], )  # 如果此scope下不存在某变量，则自动创建，如果存在则报错；
+with tf.variable_scope('reuse', reuse=tf.AUTO_REUSE):
+    tf.get_variable(name='a')  # 此时若a存在，则把其返回
+
 tf.assign(x, y)  # 把y赋值给x
 tf.multiply(x, y)  # x与y相乘；矩阵相乘时，只能有一个为矩阵，按元素相乘
 tf.matmul(x, y)  # 矩阵相乘，x与y的shape必须匹配
@@ -42,16 +47,19 @@ tf.nn.xw_plus_b(x, weights, bias)  # 计算x * w + b
 tf.transpose(tensor, perm=[1, 2, 0])  # 例如：[depth, height, width] to [height, width, depth]。perm指定哪些纬度交换，[1, 2, 0]=第一维成为最后一维二三维成为一二维。矩阵转秩
 batch_x, batch_y = tf.train.batch([x, y], batch_size=10)  # 貌似专门用来打包输入数据的，一般x,y为两个queue，此方法会把打包为每次输出batch_size大小的x,y
 
-
 tf.nn.embedding_lookup(tensor, ids=[1, 2, 3])  # 这是根据ids里的索引idx，获取params里相应索引的值，
 with tf.control_dependencies([x, y]):  # 梳理op运行关系的，必须先运行一些op，才能运行后面的。经常用于先计算summary
     pass
 
 from tensorflow.python.ops import array_ops
 
-array_ops.split(tensor, num_or_size_splits=2, axis=0)  # 把tensor延axis方向上切为小块的tensor，split是一个scalar则平均分，否则每片多少由split指定
+array_ops.split(tensor, num_or_size_splits=2, axis=0)  # 把tensor延axis方向上切为小块的tensor，split是一个scalar,指定则平均分，否则每片多少由split指定
+tf.split(tensor, num_or_size_splits=[2, 3, 4], axis=1)  # 与上相同
+tf.unstack(tensor, axis=0)  # 输入shape是[a,b,c,d],axis=0，则输出是([b,c,d]...)有a个
+
 array_ops.concat(tensor, axis=1)  # 把tensor里的张量延方向合并。例：([[1,2,3],[4,5,6]],[[3,2,1],[6,5,4]])，延0合并=[[1,2,3],[4,5,6],[3,2,1],[6,5,4]]，延1合并=[[1,2,3,3,2,1],[4,5,6,6,5,4]]。tf里经常延1合并，是在每一个batch上合并成一个长向量。
 
+# 这是在py内处理的包
 from tensorflow.python.util import nest
 
 nest.flatten(x)  # 内部用递归的方式把N维输入，转为1维的list输出
@@ -87,23 +95,23 @@ tf.reduce_mean(tf.where(tf.greater(x, y), x, y))
 a = b = tf.Variable()
 tf.where(tf.greater(a, b), tf.where(tf.greater(x, y), x, y), y)
 
-#rnn的
-tf.contrib.seq2seq.sequence_loss() # 记得里面只是把3维的转为2维的计算交叉熵
+# rnn的
+tf.contrib.seq2seq.sequence_loss()  # 记得里面只是把3维的转为2维的计算交叉熵
 
 '''优化'''
 lr = 0.1
-tf.train.exponential_decay(lr, global_step=x, decay_steps=10, decay_rate=0.99) # decay_steps 是隔多少步衰减一次
+tf.train.exponential_decay(lr, global_step=x, decay_steps=10, decay_rate=0.99)  # decay_steps 是隔多少步衰减一次
 
 # 批标准化，其实就是减去样本均值，除上样本方差，标准化后再引入新的均值和偏差
-mean, var = tf.nn.moments(x, axes=[1]) # axes=纬度数组=对哪些维的数据计算均值方差，例shape(x)=[2,3,4], axes=[1,2]时，输出shape=[2]，即对2、3维合起来计算均值方差.一般对axes=batch维，例如0
-offset = tf.Variable(0, dtype=tf.float32) # 虽然tf允许张量与标量加减，但这里需要的是一堆可训练的变量，所以最好还是声明一个与x长度相符的量
-scale = tf.Variable(1, dtype=tf.float32) # 同上
-tf.nn.batch_normalization(x, mean, var, offset=offset, scale=scale, variance_epsilon=1e-9) # 批标准化=scale * ((x-mean)/var) + offset
+mean, var = tf.nn.moments(x, axes=[1])  # axes=纬度数组=对哪些维的数据计算均值方差，例shape(x)=[2,3,4], axes=[1,2]时，输出shape=[2]，即对2、3维合起来计算均值方差.一般对axes=batch维，例如0
+offset = tf.Variable(0, dtype=tf.float32)  # 虽然tf允许张量与标量加减，但这里需要的是一堆可训练的变量，所以最好还是声明一个与x长度相符的量
+scale = tf.Variable(1, dtype=tf.float32)  # 同上
+tf.nn.batch_normalization(x, mean, var, offset=offset, scale=scale, variance_epsilon=1e-9)  # 批标准化=scale * ((x-mean)/var) + offset
 tf.layers.batch_normalization(tensor)  # 貌似是在每层激活函数之前，给增加每一维增加一个sub学习率，来归一化数据，让其分布保持不变，以加速训练速度
-tf.layers.Dropout(rate=0.2) # rate 丢弃比率
-tf.nn.dropout(x, keep_prob=0.6) # keep_prob 保留比率
+tf.layers.Dropout(rate=0.2)  # rate 丢弃比率
+tf.nn.dropout(x, keep_prob=0.6)  # keep_prob 保留比率
 cell = 'rnn cell'
-tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=0.6) # rnn的dropout
+tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=0.6)  # rnn的dropout
 
 tf.train.GradientDescentOptimizer(learning_rate=lr, use_locking=True)  # 基本的随机梯度下降，use_locking不知道干嘛
 tf.train.AdamOptimizer(learning_rate=lr, beta1=0.9, beta2=0.99)  # 后面两个是动量的衰减
@@ -127,6 +135,7 @@ tf.layers.max_pooling1d(inputs, pool_size=2, strides=1)  # pool_size=池化窗�
 tf.nn.max_pool(inputs, ksize=[1, 1, 1, 1], strides=[1, 2, 2, 1], padding='SAME')  # 其它参数同上，ksize的格式很奇葩与stride相同[1,2,2,1]。[不同的样本, 宽, 高, 深]
 
 '''rnn'''
+## 所有的rnn单元实现，都只能接收2D的input[batch, input_size]，多维数据必须转为1维
 last_state = tf.Variable()
 tf.nn.rnn_cell.RNNCell()  # rnn的抽象类
 
@@ -160,22 +169,21 @@ cell = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=3, num_units=90, input_size=95)
 
 # rnn打包。上面只是定义了网络，但是rnn调用时并不是直入直出的，而是按照顺序挨个输入Xi，同时输入X(i-1)的state，计算后输出Yi。最后把1-n的Yi打包在一起形成最终输出。
 # 下面就是自动挨个调用rnn_cell的打包方法。
-outputs1, final_states1 = tf.nn.static_rnn(cell, inputs, initial_state=last_state)  #
-outputs2, final_states2 = tf.nn.dynamic_rnn(cell, inputs, initial_state=last_state)  # 跟static的区别貌似是接收的inputs形状不同，static接收的必须是相同batch_size的输入，而dynamic可以不同。
-
+outputs1, final_states1 = tf.nn.static_rnn(cell, inputs, initial_state=last_state)  # shape(inputs)=[max_time, batch, input_size]，
+outputs2, final_states2 = tf.nn.dynamic_rnn(cell, inputs, initial_state=last_state, time_major=True)  # 跟static的区别貌似是:dyn接收的inputs每个time里的[batch,input_size]的input_size可以不同，static接收的必须是相同[batch, input_size]的输入。time_major=True->输入[max_time, batch, depth]，否则[batch, max_time, depth]，后者需要多转型两次
 
 '''模型数据变成与恢复'''
 #
-tf.global_variables(scope=None) # 这两个方法功能一样
-tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=None) # 都是取出tf图中collection里的定义的所有变量，指定scope则只取scope下的
 
-saver = tf.train.Saver(tf.global_variables(), max_to_keep=5) # max_to_keep是保留最近的几个checkpoint文件
+tf.global_variables(scope=None)  # 这两个方法功能一样
+tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=None)  # 都是取出tf图中collection里的定义的所有变量，指定scope则只取scope下的
+
+saver = tf.train.Saver(tf.global_variables(), max_to_keep=5)  # max_to_keep是保留最近的几个checkpoint文件
 sess = tf.Session()
 step = tf.Variable()
 model_path = saver.save(sess, 'data/model-name', global_step=step)
 model_path2 = saver.last_checkpoints('data/')
 saver.restore(sess, model_path2)
-
 
 """
 tensorboard使用:
