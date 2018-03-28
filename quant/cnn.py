@@ -16,7 +16,7 @@ class EvalNet(object):
         self.input_shape = np.shape(obses[0].train_x[0])
         self.num_y = 1
         self.batch_size = 100
-        self.epoch = 200
+        self.epoch = 100
         # self.train_split = 50
         self.step = tf.Variable(0, trainable=False)
         self._define_train()
@@ -42,10 +42,10 @@ class EvalNet(object):
         # norm_x = tf.nn.batch_normalization(batch_x, mean, var, offset=offset, scale=scale, variance_epsilon=1e-9)
         norm_x = batch_x
         with tf.variable_scope(scope):
-            cnn1 = tf.layers.conv1d(norm_x, filters=16, kernel_size=24, strides=3, kernel_initializer=kernel_initer, bias_initializer=bias_initer)
+            cnn1 = tf.layers.conv1d(norm_x, filters=16, kernel_size=24, strides=2, kernel_initializer=kernel_initer, bias_initializer=bias_initer)
             cnn1 = tf.layers.max_pooling1d(cnn1, pool_size=2, strides=1)
             # pool1 = cnn1
-            cnn2 = tf.layers.conv1d(cnn1, filters=16, kernel_size=24, strides=3, kernel_initializer=kernel_initer, bias_initializer=bias_initer)
+            cnn2 = tf.layers.conv1d(cnn1, filters=16, kernel_size=24, strides=2, kernel_initializer=kernel_initer, bias_initializer=bias_initer)
             cnn2 = tf.layers.max_pooling1d(cnn2, pool_size=2, strides=1)
             # x = cnn2
             x2 = self._flatten(cnn2)
@@ -81,21 +81,22 @@ class EvalNet(object):
         self.train_op = tf.train.AdamOptimizer(lr).minimize(self.loss)
 
     def train(self):
-        max_step = 100 * self.epoch
+        max_step = 5 * self.epoch
         for i in range(max_step):
-            oi = 0
-            if len(self.obses) > 1:
-                oi = i % len(self.obses)
-            obs = self.obses[oi]
-            randidxes = np.random.randint(0, len(obs.train_x), self.batch_size)
-            # start = (i * self.batch_size) % self.train_split
-            # end = min(start + self.batch_size, self.train_split)
-            batch_x = obs.train_x[randidxes]
-            batch_y = obs.train_y[randidxes]
-            self.sess.run([self.train_op], feed_dict={self.batch_x: batch_x, self.batch_y: batch_y})
-            if i % 10 == 0:
-                loss = self.sess.run(self.loss, feed_dict={self.batch_x: batch_x, self.batch_y: batch_y})
-                log.info('cost: %5.4f', loss)
+            for j in range(len(self.obses)):
+                obs = self.obses[j]
+                ln = len(obs.train_x)
+                start = (i * self.batch_size) % ln
+                end = min(start + self.batch_size, ln)
+                batch_x = obs.train_x[start:end]
+                batch_y = obs.train_y[start:end]
+                # randidxes = np.random.randint(0, ln, self.batch_size)
+                # batch_x = obs.train_x[randidxes]
+                # batch_y = obs.train_y[randidxes]
+                self.sess.run([self.train_op], feed_dict={self.batch_x: batch_x, self.batch_y: batch_y})
+                if i % 10 == 0:
+                    loss = self.sess.run(self.loss, feed_dict={self.batch_x: batch_x, self.batch_y: batch_y})
+                    log.info('cost: %5.3f', loss)
 
     def test(self):
         log.info('test:')
@@ -131,14 +132,30 @@ class EvalNet(object):
             log.info('pred cost: %.4f', p_cost)
         log.info('total cost: %.4f', total_cost)
 
+    # 应该用渐近式预测，就是预测少量数据，对比cost，然后训练之，再循环
+    def continue_test(self):
+        log.info('continue test:')
+        total_cost = []
+        for i in range(len(self.obses)):
+            obs = self.obses[i]
+            x = obs.test_x
+            end = len(x)
+            x = x[:end]
+            labels = obs.test_y[:end]
+            d_line = obs.test_date
+            pred, p_cost = self.sess.run([self.pred, self.p_loss], feed_dict={self.batch_x: x, self.batch_y: labels})
+            total_cost.append(p_cost)
+
+            log.info('pred cost: %.4f', p_cost)
+        log.info('total cost: %.4f', np.mean(total_cost))
 
 if __name__ == '__main__':
     log.basicConfig(stream=sys.stdout, level=log.INFO, format='%(message)s')
     # print(len(obs_x))
     obses = []
-    for i in range(50):
+    for i in range(100):
         try:
-            obs = stock_data.prepare_single(i)
+            obs = stock_data.prepare_single(i, 100)
             obses.append(obs)
         except:
             continue
@@ -147,5 +164,5 @@ if __name__ == '__main__':
     enet = EvalNet(obses)
     enet.train()
     # enet.test()
-    enet.predict()
+    enet.continue_test()
     enet.sess.close()

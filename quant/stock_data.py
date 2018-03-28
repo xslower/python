@@ -149,7 +149,7 @@ stock_file = 'data/stock/%s.csv'
 
 
 # O_CLSE_UP = 1
-# O_HIGH_UP = 2
+O_HIGH_UP = 2
 # O_OPEN_UP = 1
 # O_LOW_UP = 4
 # O_TURN = 5
@@ -185,7 +185,7 @@ def load_file(id, no_stop = False):
         # new_li[O_CLSE_UP] = divide(today_close, last_close) - 1
         # new_li[O_HIGH_UP] = divide(li[I_HIGH], last_close) - 1
         # new_li[O_LOW_UP] = divide(li[I_LOW], last_close) - 1
-        # new_li[O_HIGH_UP] = divide(li[I_HIGH], li[I_LOW]) - 1
+        # new_li[O_HIGH_UP] = li[I_HIGH]
         # 换手和成交量不变
         # new_li[O_TURN] = li[I_TURN]
         new_li[O_VOLU] = li[I_VOL]
@@ -196,16 +196,13 @@ def load_file(id, no_stop = False):
     return date_line, np.array(k_line)
 
 
-obs_len = 300
-
-
 def print_table(tb):
     for i in range(len(tb)):
         print(tb[i])
 
 
 #
-def prepare_single(stock_id):
+def prepare_single(stock_id, obs_len = 300):
     ss = preprocessing.StandardScaler()
     d_line, k_line = load_file(stock_id, True)
     label = Label(k_line, d_line)
@@ -219,13 +216,11 @@ def prepare_single(stock_id):
     new_dl = []
     y = []
     for i in range(obs_len, len(k_line)):
-        # up = divide(k_line[i][O_CLOSE], k_line[i-1][O_CLOSE]) - 1
-        # if abs(up) < 0.01:
-        #     continue
-        block = k_line[i - obs_len:i]
+        # 归一化前面所有的数据
+        block = k_line[:i]
         norm = ss.fit_transform(block)
-        # norm = block
-        samples.append(norm)
+        # 只取后面需要的
+        samples.append(norm[-obs_len:])
         new_dl.append(d_line[i])
         y.append(label.up_table[i])
     # print(k_line[:10], samples[0])
