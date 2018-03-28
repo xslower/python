@@ -224,7 +224,10 @@ def prepare_single(stock_id, obs_len = 300):
         new_dl.append(d_line[i])
         y.append(label.up_table[i])
     # print(k_line[:10], samples[0])
-    return Stock(np.array(samples), np.array(y), new_dl)
+    s = Stock(np.array(samples), np.array(y), new_dl)
+    # print_table(s.test_x))
+    # print_table(s.test_y
+    return s
 
 
 def prepare(stock_id, base_id = '000001.XSHG'):
