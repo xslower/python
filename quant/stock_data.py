@@ -127,7 +127,7 @@ class Label(object):
 
 
 class Stock(object):
-    def __init__(self, x, y, dates, spliter='2012-12-12'):
+    def __init__(self, x, y, dates, spliter='2013-01-01'):
         idx = 0
         for i in range(len(dates)):
             if dates[i] >= spliter:

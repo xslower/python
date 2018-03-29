@@ -32,7 +32,7 @@ class EvalNet(object):
         out = tf.reshape(inp, [-1, num])
         return out
 
-    def _infer(self, batch_x, scope, is_train = False):
+    def _infer(self, batch_x, scope, is_train = True):
         bias_initer = tf.constant_initializer(0.01)
         kernel_initer = tf.random_normal_initializer(0, 0.1)
 
@@ -66,14 +66,13 @@ class EvalNet(object):
         self.batch_x = tf.placeholder(dt(), [None, *self.input_shape], name='batch_x')
         self.batch_y = tf.placeholder(tf.float32, [None], name='label_y')
         self.eval = self._infer(self.batch_x, 'eval')
-        self.pred = self._infer(self.batch_x, 'pred', True)
+        self.pred = self._infer(self.batch_x, 'pred', False)
         # self.loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.batch_y, logits=self.eval))
         # self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.eval, labels=self.batch_y))
         # self.p_lost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=self.batch_y, logits=self.pred))
-        self.eval = tf.squeeze(self.eval)
+        self.eval = tf.squeeze(self.eval, axis=1)
         self.pred = tf.squeeze(self.pred)
-        sd = tf.squared_difference(x=self.eval, y=self.batch_y)
-        self.loss = tf.reduce_mean(sd)
+        self.loss = tf.reduce_mean(tf.squared_difference(x=self.eval, y=self.batch_y))
         self.p_loss = tf.reduce_mean(tf.squared_difference(x=self.pred, y=self.batch_y))
         # self.loss = tf.reduce_mean(tf.where(tf.greater_equal(self.batch_y, 0), tf.where(tf.greater_equal(self.eval, self.batch_y), sd, sd * 5), tf.where(tf.less_equal(self.eval, self.batch_y), sd, sd * 2)))
         lr = tf.train.exponential_decay(self.learn_rate, global_step=self.step, decay_steps=10, decay_rate=self.lr_decay)
@@ -121,7 +120,7 @@ class EvalNet(object):
             labels = obs.test_y
             d_line = obs.test_date
             pred, p_cost = self.sess.run([self.pred, self.p_loss], feed_dict={self.batch_x: x, self.batch_y: labels})
-            total_cost+= p_cost
+            total_cost += p_cost
             # pred_class = np.argmax(pred, 1)
             # labl_class = np.argmax(labels, 1)
             # for i in range(len(pred)):
@@ -135,27 +134,37 @@ class EvalNet(object):
     # 应该用渐近式预测，就是预测少量数据，对比cost，然后训练之，再循环
     def continue_test(self):
         log.info('continue test:')
-        total_cost = []
+        batch = 5
+        all_cost = []
         for i in range(len(self.obses)):
             obs = self.obses[i]
             x = obs.test_x
-            end = len(x)
-            x = x[:end]
-            labels = obs.test_y[:end]
-            d_line = obs.test_date
-            pred, p_cost = self.sess.run([self.pred, self.p_loss], feed_dict={self.batch_x: x, self.batch_y: labels})
-            total_cost.append(p_cost)
+            step = len(x) // batch
+            total_cost = []
+            for j in range(step + 1):
+                start = j * batch
+                end = min(start + batch, len(x))
+                labels = obs.test_y[start:end]
+                d_line = obs.test_date
 
-            log.info('pred cost: %.4f', p_cost)
-        log.info('total cost: %.4f', np.mean(total_cost))
+                pred, loss = self.sess.run([self.eval, self.loss], feed_dict={self.batch_x: x[start:end], self.batch_y: labels})
+                total_cost.append(loss)
+                for _ in range(5):
+                    self.sess.run(self.train_op, feed_dict={self.batch_x: x[start:end], self.batch_y: labels})
+                for t in range(len(pred)):
+                    log.info('pred:%s y:%s', pred[t], labels[t])
+            log.info('pred cost: %.4f', np.mean(total_cost))
+            all_cost.append(np.mean(total_cost))
+        log.info('total cost: %.4f', np.mean(all_cost))
+
 
 if __name__ == '__main__':
     log.basicConfig(stream=sys.stdout, level=log.INFO, format='%(message)s')
     # print(len(obs_x))
     obses = []
-    for i in range(100):
+    for i in range(3, 5):
         try:
-            obs = stock_data.prepare_single(i, 100)
+            obs = stock_data.prepare_single(i)
             obses.append(obs)
         except:
             continue

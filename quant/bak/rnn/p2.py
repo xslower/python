@@ -93,8 +93,6 @@ def train_lstm(batch_size = 80, time_step = 15, train_begin = 2000, train_end = 
     X = tf.placeholder(tf.float32, shape=[None, time_step, input_size])
     Y = tf.placeholder(tf.float32, shape=[None, time_step, output_size])
     batch_index, train_x, train_y = get_train_data(batch_size, time_step, train_begin, train_end)
-    print(np.shape(train_x), np.shape(train_y))
-    return
     pred, _ = lstm(X)
     # 损失函数
     loss = tf.reduce_mean(tf.square(tf.reshape(pred, [-1]) - tf.reshape(Y, [-1])))
@@ -105,7 +103,7 @@ def train_lstm(batch_size = 80, time_step = 15, train_begin = 2000, train_end = 
         sess.run(tf.global_variables_initializer())
         # saver.restore(sess, module_file)
         # 重复训练10000次
-        for i in range(200):
+        for i in range(20):
             for step in range(len(batch_index) - 1):
                 _, loss_ = sess.run([train_op, loss], feed_dict={X: train_x[batch_index[step]:batch_index[step + 1]], Y: train_y[batch_index[step]:batch_index[step + 1]]})
             print(i, loss_)
@@ -113,7 +111,7 @@ def train_lstm(batch_size = 80, time_step = 15, train_begin = 2000, train_end = 
                 print("保存模型：", saver.save(sess, 'data/stock2.model', global_step=i))
 
 
-train_lstm()
+# train_lstm()
 
 
 # ————————————————预测模型————————————————————
@@ -142,4 +140,4 @@ def prediction(time_step = 20):
         plt.show()
 
 
-# prediction()
+prediction()
