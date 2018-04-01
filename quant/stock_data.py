@@ -15,12 +15,13 @@ def divide(a, b):
 class Label(object):
     spliter = [-50, -30, -15, 0, 15, 30, 45, 60, 90]
     num_class = len(spliter) - 1
+    days = 30
 
     def __init__(self, k_line, d_line):
         self.k_line = k_line
         self.d_line = d_line
         self.reward_table = np.zeros((len(k_line), 2, 2), dtype=np.float32)
-        self.up_table = np.zeros((len(k_line),), dtype=np.float32)
+        self.up_table = np.zeros((len(k_line), 2), dtype=np.float32)
         self.class_table = np.zeros((len(k_line), self.num_class), dtype=np.float32)
         self.decay = 0.9
 
@@ -74,14 +75,21 @@ class Label(object):
             print(self.d_line[i], up[i])
 
     def calc_up(self):
+        days = self.days
         for i in range(len(self.k_line)):
-            up = self._clse_up(i)
-            self.up_table[i] = up * 100
-        decay = 0.98
-        for i in range(len(self.k_line) - 1, 0, -1):
-            up = self.up_table[i]
-            self.up_table[i - 1] += decay * up
+            mi = min(self.k_line[i:i + days, O_CLOSE])
+            mx = max(self.k_line[i:i + days, O_CLOSE])
+            close = self.k_line[i][O_CLOSE]
+            mul = 100
+            self.up_table[i][0] = divide(mi, close) * mul
+            self.up_table[i][1] = divide(mx, close) * mul
 
+            # decay = 0.98
+            # for i in range(1, len(self.k_line)-self.days):
+            #     self.up_table[i] = np.sum(self.up_table[i:i+self.days])
+            # for i in range(len(self.k_line) - 1, 0, -1):
+            #     up = self.up_table[i]
+            #     self.up_table[i - 1] += decay * up
             # self._echo_ut(self.up_table)
 
     # 数值转为概率分布
@@ -116,28 +124,28 @@ class Label(object):
                 break
         return dis
 
-    # 给一个概率分布，而不是唯一值
-    def calc_class(self):
-        self.calc_up()
-        for i in range(len(self.up_table)):
-            v = self.up_table[i]
-            dis = self.score_to_dis(v)
-            # print(v, dis)
-            self.class_table[i] = dis
-
 
 class Stock(object):
-    def __init__(self, x, y, dates, spliter='2013-01-01'):
+    def __init__(self, x, y, dates, spliter = '2013-01-01'):
         idx = 0
+        tmp_x = []
+        tmp_y = []
+        tmp_d = []
         for i in range(len(dates)):
             if dates[i] >= spliter:
                 idx = i
                 break
+            # 去掉不明显的标识
+            if np.sum(np.abs(y[i])) < 20:
+                continue
+            tmp_x.append(x[i])
+            tmp_y.append(y[i])
+            tmp_d.append(dates[i])
         if idx == 0:
             raise Exception('died stock')
-        self.train_x = x[:idx]
-        self.train_y = y[:idx]
-        self.train_date = dates[:idx]
+        self.train_x = np.array(tmp_x)
+        self.train_y = np.array(tmp_y)
+        self.train_date = tmp_d
         self.test_x = x[idx:]
         self.test_y = y[idx:]
         self.test_date = dates[idx:]
@@ -147,9 +155,10 @@ O_CLOSE = 0
 O_VOLU = 1
 stock_file = 'data/stock/%s.csv'
 
-
 # O_CLSE_UP = 1
 O_HIGH_UP = 2
+
+
 # O_OPEN_UP = 1
 # O_LOW_UP = 4
 # O_TURN = 5
@@ -206,7 +215,8 @@ def prepare_single(stock_id, obs_len = 300):
     ss = preprocessing.StandardScaler()
     d_line, k_line = load_file(stock_id, True)
     label = Label(k_line, d_line)
-    label.calc_class()
+    # label.calc_class()
+    label.calc_up()
     # print_table(label.class_table)
     samples = []
     # for i in range(len(k_line)-1):
@@ -215,7 +225,7 @@ def prepare_single(stock_id, obs_len = 300):
     # print(type(k_line[0][1]))
     new_dl = []
     y = []
-    for i in range(obs_len, len(k_line)):
+    for i in range(obs_len, len(k_line) - label.days):
         # 归一化前面所有的数据
         block = k_line[:i]
         norm = ss.fit_transform(block)

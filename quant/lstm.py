@@ -23,8 +23,9 @@ class RnnEval(object):
     def __init__(self, obses):
         self._learn_rate = 0.03
         self.batch_size = 1
-        self.epoch = 50
-        self.rnn_units = 8
+        self.epoch = 80
+        self.rnn_units = 12
+        self.num_y = 2
         input_shape = np.shape(obses[0].train_x[0])
         self.input_size = input_shape[0] * input_shape[1]
         for i in range(len(obses)):
@@ -60,13 +61,14 @@ class RnnEval(object):
         # weights = tf.get_variable('output-weights', [self.rnn_units, 1], dtype=tf.float32, initializer=tf.random_normal_initializer(0, 0.1))
         # bias = tf.get_variable('output-bias', [1], initializer=tf.constant_initializer(0.1))
         # out = tf.nn.xw_plus_b(outputs, weights, bias)
-        out = tf.layers.dense(outputs, 1)
-        out = tf.squeeze(out)
+        out = tf.layers.dense(outputs, self.num_y)
+        if self.num_y == 1:
+            out = tf.squeeze(out, axis=1)
         return out, state
 
     def _define_train(self):
         self.x = tf.placeholder(tf.float32, [self.batch_size, None, self.input_size])
-        self.y = tf.placeholder(tf.float32, [None])
+        self.y = tf.placeholder(tf.float32, [None, self.num_y])
         self.eval, self.stage_state = self._build_rnn_net(self.x)
 
         self.cost = tf.reduce_mean(tf.squared_difference(x=self.eval, y=self.y))
@@ -100,6 +102,9 @@ class RnnEval(object):
             for i in range(len(pred)):
                 log.info('pred:%s y:%s', pred[i], obs.test_y[i])
             log.info('%d cost: %s', j, str(cost))
+            sq = np.square(np.mean(obs.test_y, axis=0)-obs.test_y)
+            cost = np.mean(sq)
+            log.info(' mean cost: %s', cost)
 
 
 if __name__ == "__main__":

@@ -13,10 +13,12 @@ class EvalNet(object):
         self.learn_rate = 0.001
         self.lr_decay = 0.9
         self.obses = obses
+        print(len(obses))
+        print(len(obses[0].train_x))
         self.input_shape = np.shape(obses[0].train_x[0])
-        self.num_y = 1
+        self.num_y = 2
         self.batch_size = 100
-        self.epoch = 100
+        self.epoch = 150
         # self.train_split = 50
         self.step = tf.Variable(0, trainable=False)
         self._define_train()
@@ -60,18 +62,20 @@ class EvalNet(object):
             dn31 = tf.layers.dense(x3, 8, activation=tf.nn.relu, kernel_initializer=kernel_initer, bias_initializer=bias_initer)
             dn32 = tf.layers.dense(dn31, self.num_y)
             q = dn32 + dn22
+            if self.num_y == 1:
+                q = tf.squeeze(q, axis=1)
         return q
 
     def _define_train(self):
         self.batch_x = tf.placeholder(dt(), [None, *self.input_shape], name='batch_x')
-        self.batch_y = tf.placeholder(tf.float32, [None], name='label_y')
+        self.batch_y = tf.placeholder(tf.float32, [None, self.num_y], name='label_y')
         self.eval = self._infer(self.batch_x, 'eval')
         self.pred = self._infer(self.batch_x, 'pred', False)
         # self.loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.batch_y, logits=self.eval))
         # self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.eval, labels=self.batch_y))
         # self.p_lost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=self.batch_y, logits=self.pred))
-        self.eval = tf.squeeze(self.eval, axis=1)
-        self.pred = tf.squeeze(self.pred)
+        # self.eval = tf.squeeze(self.eval, axis=1)
+        # self.pred = tf.squeeze(self.pred)
         self.loss = tf.reduce_mean(tf.squared_difference(x=self.eval, y=self.batch_y))
         self.p_loss = tf.reduce_mean(tf.squared_difference(x=self.pred, y=self.batch_y))
         # self.loss = tf.reduce_mean(tf.where(tf.greater_equal(self.batch_y, 0), tf.where(tf.greater_equal(self.eval, self.batch_y), sd, sd * 5), tf.where(tf.less_equal(self.eval, self.batch_y), sd, sd * 2)))
@@ -114,17 +118,17 @@ class EvalNet(object):
     def predict(self):
         log.info('predict:')
         total_cost = 0.0
-        for i in range(len(self.obses)):
-            obs = self.obses[i]
+        for j in range(len(self.obses)):
+            obs = self.obses[j]
             x = obs.test_x
             labels = obs.test_y
-            d_line = obs.test_date
-            pred, p_cost = self.sess.run([self.pred, self.p_loss], feed_dict={self.batch_x: x, self.batch_y: labels})
+            dates = obs.test_date
+            pred, p_cost = self.sess.run([self.eval, self.loss], feed_dict={self.batch_x: x, self.batch_y: labels})
             total_cost += p_cost
             # pred_class = np.argmax(pred, 1)
             # labl_class = np.argmax(labels, 1)
-            # for i in range(len(pred)):
-            #     log.info('%s pred:%s y:%s', d_line[i], pred[i], labels[i])
+            for j in range(len(pred)):
+                log.info('%s pred:%s y:%s', dates[j], pred[j], labels[j])
             # p_cost = self.sess.run(self.p_lost, feed_dict={self.pred:pred, self.batch_y:labels})
             # precise(labels, pred, self.num_y)
             # p_cost = np.mean(np.square(labels - pred))
@@ -136,23 +140,28 @@ class EvalNet(object):
         log.info('continue test:')
         batch = 5
         all_cost = []
+        days = stock_data.Label.days
         for i in range(len(self.obses)):
             obs = self.obses[i]
-            x = obs.test_x
-            step = len(x) // batch
+            tx = obs.test_x
+            step = (len(tx) - days) // batch
+            if step < 1:
+                continue
             total_cost = []
             for j in range(step + 1):
                 start = j * batch
-                end = min(start + batch, len(x))
-                labels = obs.test_y[start:end]
-                d_line = obs.test_date
-
-                pred, loss = self.sess.run([self.eval, self.loss], feed_dict={self.batch_x: x[start:end], self.batch_y: labels})
+                end = min(start + batch, len(tx))
+                x = tx[start + days:end + days]
+                labels = obs.test_y[start + days:end + days]
+                dates = obs.test_date[start + days:end + days]
+                # 用后面没有被未来数据污染的数据预测
+                pred, loss = self.sess.run([self.eval, self.loss], feed_dict={self.batch_x: x, self.batch_y: labels})
                 total_cost.append(loss)
-                for _ in range(5):
-                    self.sess.run(self.train_op, feed_dict={self.batch_x: x[start:end], self.batch_y: labels})
+                # 用前面的数据训练
+                for _ in range(1):
+                    self.sess.run(self.train_op, feed_dict={self.batch_x: tx[start:end], self.batch_y: obs.test_y[start:end]})
                 for t in range(len(pred)):
-                    log.info('pred:%s y:%s', pred[t], labels[t])
+                    log.info('%s ctest:%s y:%s', dates[t], pred[t], labels[t])
             log.info('pred cost: %.4f', np.mean(total_cost))
             all_cost.append(np.mean(total_cost))
         log.info('total cost: %.4f', np.mean(all_cost))
@@ -162,16 +171,18 @@ if __name__ == '__main__':
     log.basicConfig(stream=sys.stdout, level=log.INFO, format='%(message)s')
     # print(len(obs_x))
     obses = []
-    for i in range(3, 5):
+    for i in range(1, 20):
         try:
             obs = stock_data.prepare_single(i)
             obses.append(obs)
-        except:
+        except Exception as e:
+            print(e)
             continue
     # obses.append(stock_data.prepare_single(2))
     # obses.append(stock_data.prepare_single(5))
     enet = EvalNet(obses)
     enet.train()
-    # enet.test()
-    enet.continue_test()
+    enet.test()
+    enet.predict()
+    # enet.continue_test()
     enet.sess.close()
