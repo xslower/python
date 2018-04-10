@@ -34,6 +34,8 @@ tf.assign(x, y)  # 把y赋值给x
 tf.multiply(x, y)  # x与y相乘；矩阵相乘时，只能有一个为矩阵，按元素相乘
 tf.matmul(x, y)  # 矩阵相乘，x与y的shape必须匹配
 tf.argmax(y_label, axis=1)  # y_label是2维的，axis是操作哪一维。[[0,1,0],[1,0,0],[0,0,1]->[1,0,2]
+num_class = 5
+tf.one_hot(indices=y_label, depth=num_class) # 把序列中每个值v变为一个向量，向量长度=depth，其中只有v所指的位置的值=1，其它都是0
 tf.expand_dims(tensor, axis=1)  # 把一个tensor扩充一维，axis=扩充第几维。例如[1,2,3]->[[1],[2],[3]] -> [[[1]],[[2]],[[3]]]。
 tf.squeeze(x, axis=None)  # 去掉长度=1的那些纬度，例：tf.shape(t) = [1,2,1,3,1,1] tf.shape(tf.squeeze(t))=[2,3], 如果指定axis，则axis维的len必须=1
 tf.reduce_mean(x, axis=0)  # 延着指定纬度计算平均值x[mean][i][j]，不指定纬度则计算全部值的平均值
@@ -70,9 +72,12 @@ nest.is_sequence(x)  # isinstance(x, collections.Sequence) 1维以上的数组�
 mean = 0.0
 stddev = 1.0
 norm = tf.distributions.Normal(loc=mean, scale=stddev)  # 正态分布，loc=平均值，scale=标准差
-norm.sample(sample_shape=1)  # 基于此分布生成一个目标shape的样本集
+norm.sample(sample_shape=1)  # 基于此分布生成一个目标shape=sample_shape的样本集
 norm.log_prob(value=1.1)  # 貌似是计算此分布某点的概率密度
 norm.entropy()  # Shannon entropy
+
+tf.multinomial(logits=x, num_samples=12) # logits的shape=[batch, num_class]每行是几个类别的概率分布，可以不归一，但类型必须是float型。num_samples是采样数量，就是基于logits每行的分布，采样n个样本。输出shape=[batch, num_samples]
+tf.random_normal(shape=[9,3], mean=0.0, stddev=1.0) # 基于正态分布随机数填充
 
 """训练、建模："""
 '''损失函数：'''
@@ -134,6 +139,9 @@ tf.nn.conv2d(inputs, weights, strides=[1, 2, 2, 1], padding='SAME')  # stride=�
 # 池化层
 tf.layers.max_pooling1d(inputs, pool_size=2, strides=1)  # pool_size=池化窗口
 tf.nn.max_pool(inputs, ksize=[1, 1, 1, 1], strides=[1, 2, 2, 1], padding='SAME')  # 其它参数同上，ksize的格式很奇葩与stride相同[1,2,2,1]。[不同的样本, 宽, 高, 深]
+
+import tensorflow.contrib.slim as slim
+slim.convolution2d_transpose(inputs, num_outputs=32, kernel_size=[4, 4], stride=2) # 这个貌似是反向的cnn
 
 '''rnn'''
 ## 所有的rnn单元实现，都只能接收2D的input[batch, input_size]，多维数据必须转为1维

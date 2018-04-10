@@ -9,6 +9,7 @@ from rsa_client import rsa_client as rsa
 
 # Openapi提交请求封装
 class pp_client:
+    timeout = 5
     # oauth2授权地址
     AUTHORIZE_URL = "https://ac.ppdai.com/oauth2/authorize"
     # 刷新Token地址
@@ -69,7 +70,7 @@ class pp_client:
         i = 0
         while True:
             try:
-                r = requests.post(url, data=json.dumps(data), headers=headers, timeout=5)
+                r = requests.post(url, data=json.dumps(data), headers=headers, timeout=cls.timeout)
                 if r is not None:
                     result = r.json()
                     return result

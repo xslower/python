@@ -92,13 +92,13 @@ def get_ids(bids):
 
 
 # 请求用户出借记录
-def bid_list(open_id, start_after = 0):
+def bid_list(open_id, start_after = 0, span = 20):
     log.info('bid_list:')
     token = config.get_token(open_id)
     now = time_plus.now()
     # now = time_plus.timestamp('2017-08-12 00:00:00')
     end = now
-    start = now - time_plus.day * 30
+    start = now - time_plus.day * span
     while True:
         log.info('%s %s', time_plus.std_date(start), time_plus.std_date(end))
         i = 1
@@ -126,7 +126,7 @@ def bid_list(open_id, start_after = 0):
         if not has_record:
             break
         end = start
-        start -= time_plus.day * 30
+        start -= time_plus.day * span
         if start < start_after:
             break
 
@@ -202,19 +202,6 @@ def fix_data():
         bid.save()
 
 
-class credit_code:
-    AAA, AA, A, B, C, D, E, F, G, H, Non = 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
-    map = {'H': H, 'G': G, 'F': F, 'E': E, 'D': D, 'C': C, 'B': B, 'A': A, 'AA': AA, 'AAA': AAA, None: Non}
-    rate = {AAA: 8, AA: 9.4, A: 16, B: 18, C: 20, D: 22, E: 24, F: 26, G: 28, Non: 50}
-    limit = {AAA: 500, AA: 2000, A: 100, B: 90, C: 80, D: 70, E: 40, F: 30, G: 20, Non: 0}
-    want_rate = {'pre_buy': 4.0, 'up2': 3.0, 'up1': 2.0, 'eq': 1.0, 'dw': 1.7}
-
-    @classmethod
-    def set_want_rate(cls, pre_buy, up2, up1, eq, dw):
-        cls.want_rate = {'pre_buy': pre_buy, 'up2': up2, 'up1': up1, 'eq': eq, 'dw': dw}
-        log.info(cls.want_rate)
-
-
 def test():
     tk = config.get_token(xslower_id)
     info = left_amount(tk)
@@ -238,6 +225,7 @@ def update_debt():
 
 
 def update_all():
+    pcli.timeout = 30
     log.basicConfig(filename='log/update.log', filemode="w", level=log.INFO, format='%(message)s')
     span = 3600 * 24 * 6
     harf_day = 3600 * 12
@@ -247,13 +235,14 @@ def update_all():
         if now - last < span:
             time.sleep(harf_day)
             continue
-        start_after = int(time.time()) - 32 * 24 * 3600
+        # 只更新最近20天的投标信息
+        start_after = int(time.time()) - 30 * 24 * 3600
         bid_list(xslower_id, start_after)
         # bid_list(niude_id, start_after)
         update_repay(xslower_id)
         # update_repay(niude_id)
         config.refresh_token()
-        # os.popen('restart_norm.sh')
+        os.popen('sh restart_norm.sh', mode='w')
         # os.popen('restart_debt.sh')
         last = now
         log.info(time_plus.std_datetime(now))
