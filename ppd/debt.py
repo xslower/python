@@ -89,9 +89,9 @@ def bids_filter(bids):
 class credit_code:
     AAA, AA, A, B, C, D, E, F, G, H, Non = 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
     map = {'H': H, 'G': G, 'F': F, 'E': E, 'D': D, 'C': C, 'B': B, 'A': A, 'AA': AA, 'AAA': AAA, None: Non}
-    rate = {AAA: 8, AA: 10, A: 16, B: 22, C: 28, D: 38, E: 58, F: 78, G: 98, Non: 150}
+    rate = {AAA: 8, AA: 10.3, A: 16, B: 22, C: 28, D: 38, E: 58, F: 78, G: 98, Non: 150}
     limit = {AAA: 500, AA: 2000, A: 100, B: 90, C: 80, D: 70, E: 40, F: 30, G: 20, Non: 0}
-    want_rate = {'pre_buy': 4.0, 'up2': 3.0, 'up1': 2.0, 'eq': 1.0, 'dw': 1.7}
+    want_rate = {'pre_buy': 3.0, 'up2': 2.0, 'up1': 1.4, 'eq': 0.8, 'dw': 1.6}
 
     @classmethod
     def set_want_rate(cls, pre_buy, up2, up1, eq, dw):
@@ -158,26 +158,26 @@ def filter_debt(debt):
     # 剩余的期数太少，导致真实利率下降。
     left_num = debt['OwingNumber']
     if left_num == 1:
-        ought_rate += 1.2
+        ought_rate += 1.0
     elif left_num == 2:
-        ought_rate += 0.6
+        ought_rate += 0.5
     # 根据最近还款日短近，增加利率要求。
     days = debt['Days']
     if days <= 15:  # 还款距离越短，利率要求越高
-        ought_rate += (15 - days) ** 2 * 0.011
+        ought_rate += (15 - days) ** 2 * 0.007
+
+    # 利率让利超过一定限额，且金额较小，则直接购买不走模型。目的就是买数据
+    str_code = debt['CreditCode']
+    if str_code == 'AA' and sale_rate > ought_rate:
+        pre_buy(debt)
+        return False
 
     # 限额根据利率优惠的幅度上下调整
     limit = cc.limit[cur_code]  # * (1 + (sale_rate - ought_rate) / 10)
 
-    # 利率让利超过一定限额，且金额较小，则直接购买不走模型。目的就是买数据
-    # if sale_rate > ought_rate + cc.want_rate['pre_buy'] and \
-    #                 price < limit / 5:
-    #     pre_buy(debt)
-    #     return False
-
     if price > limit:  # 债权份额大于对应等级的限额
         return False
-    code = cc.map[debt['CreditCode']]
+    code = cc.map[str_code]
     if cur_code > code + 1:  # 升2-3级
         ought_rate += cc.want_rate['up2']
     elif cur_code > code:  # 升1级
@@ -280,27 +280,6 @@ def predict_bid(binfo):
     log.info('predict: %s', y_pred)
 
 
-# 根据余额调节各标的要求
-def amount_control():
-    total = 0
-    rev = False
-    for i in range(len(config.users)):
-        u = config.users[i]
-        left = api.left_amount(u.tk)
-        if left < config.bid_amount and i < 1:
-            rev = True
-        total += left
-    if rev:  # 有余额少的就扔到后面去
-        config.users.reverse()
-
-    f = open('config.yml', 'r')
-    conf = yaml.load(f)
-    for key in conf:
-        cf = conf[key]
-        if cf['ge'] <= total < cf['lt']:
-            api.credit_code.set_want_rate(**cf['rate'])
-
-
 def run():
     code = [None]
     for c in code:
@@ -311,7 +290,6 @@ def run():
     # run
     wait_sec = 1
 
-    amount_control()
     i = 0
     while True:
         try:
