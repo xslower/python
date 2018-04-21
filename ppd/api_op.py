@@ -10,11 +10,14 @@ def get_bid_list(token, start, end, idx):
     data = {'StartTime': time_plus.std_date(start), 'EndTime': time_plus.std_date(end), 'PageIndex': idx, 'PageSize': page_limit}
     ret = pcli.send(url.u_bid_list, data, token)
     # print(ret)
-    max_page = ret['TotalPages']
     bl = []
-    key = 'BidList'
-    if key in ret.keys():
-        bl = ret[key]
+    max_page = 1
+    k_bl = 'BidList'
+    k_tp = 'TotalPages'
+    keys = ret.keys()
+    if k_bl in keys and k_tp in keys:
+        bl = ret[k_bl]
+        max_page = ret[k_tp]
     else:
         log.info(ret)
     return bl, max_page

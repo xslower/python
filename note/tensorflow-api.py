@@ -16,6 +16,10 @@ tf.while_loop(cond, y, x)
 tf.where(tf.greater(x, y), x, y)
 # tf.while_loop()
 
+'''os'''
+from tensorflow.python.platform import gfile
+gfile.GFile('path') # 貌似是tf层操作文件的封装，与Open类似
+
 """
 数据处理：
 """
@@ -30,12 +34,13 @@ tf.get_variable(name='a', shape=[2, 2], )  # 如果此scope下不存在某变量
 with tf.variable_scope('reuse', reuse=tf.AUTO_REUSE):
     tf.get_variable(name='a')  # 此时若a存在，则把其返回
 
+line = tf.compat.as_bytes('abcde') # 把str转为bytes对象
 tf.assign(x, y)  # 把y赋值给x
 tf.multiply(x, y)  # x与y相乘；矩阵相乘时，只能有一个为矩阵，按元素相乘
 tf.matmul(x, y)  # 矩阵相乘，x与y的shape必须匹配
 tf.argmax(y_label, axis=1)  # y_label是2维的，axis是操作哪一维。[[0,1,0],[1,0,0],[0,0,1]->[1,0,2]
 num_class = 5
-tf.one_hot(indices=y_label, depth=num_class) # 把序列中每个值v变为一个向量，向量长度=depth，其中只有v所指的位置的值=1，其它都是0
+tf.one_hot(indices=y_label, depth=num_class)  # 把序列中每个值v变为一个向量，向量长度=depth，其中只有v所指的位置的值=1，其它都是0
 tf.expand_dims(tensor, axis=1)  # 把一个tensor扩充一维，axis=扩充第几维。例如[1,2,3]->[[1],[2],[3]] -> [[[1]],[[2]],[[3]]]。
 tf.squeeze(x, axis=None)  # 去掉长度=1的那些纬度，例：tf.shape(t) = [1,2,1,3,1,1] tf.shape(tf.squeeze(t))=[2,3], 如果指定axis，则axis维的len必须=1
 tf.reduce_mean(x, axis=0)  # 延着指定纬度计算平均值x[mean][i][j]，不指定纬度则计算全部值的平均值
@@ -55,15 +60,14 @@ with tf.control_dependencies([x, y]):  # 梳理op运行关系的，必须先运�
     pass
 
 from tensorflow.python.ops import array_ops
+# 这是在py内处理的包
+from tensorflow.python.util import nest
 
 array_ops.split(tensor, num_or_size_splits=2, axis=0)  # 把tensor延axis方向上切为小块的tensor，split是一个scalar,指定则平均分，否则每片多少由split指定
 tf.split(tensor, num_or_size_splits=[2, 3, 4], axis=1)  # 与上相同
 tf.unstack(tensor, axis=0)  # 输入shape是[a,b,c,d],axis=0，则输出是([b,c,d]...)有a个
-
+tf.stack(tensor, axis=0)  # 连接张量。输入N个[a,b,c],axis=0，则输出[N,a,b,c]，axis=1，则输出[a,N,b,c]
 array_ops.concat(tensor, axis=1)  # 把tensor里的张量延方向合并。例：([[1,2,3],[4,5,6]],[[3,2,1],[6,5,4]])，延0合并=[[1,2,3],[4,5,6],[3,2,1],[6,5,4]]，延1合并=[[1,2,3,3,2,1],[4,5,6,6,5,4]]。tf里经常延1合并，是在每一个batch上合并成一个长向量。
-
-# 这是在py内处理的包
-from tensorflow.python.util import nest
 
 nest.flatten(x)  # 内部用递归的方式把N维输入，转为1维的list输出
 nest.is_sequence(x)  # isinstance(x, collections.Sequence) 1维以上的数组都=True
@@ -76,8 +80,8 @@ norm.sample(sample_shape=1)  # 基于此分布生成一个目标shape=sample_sha
 norm.log_prob(value=1.1)  # 貌似是计算此分布某点的概率密度
 norm.entropy()  # Shannon entropy
 
-tf.multinomial(logits=x, num_samples=12) # logits的shape=[batch, num_class]每行是几个类别的概率分布，可以不归一，但类型必须是float型。num_samples是采样数量，就是基于logits每行的分布，采样n个样本。输出shape=[batch, num_samples]
-tf.random_normal(shape=[9,3], mean=0.0, stddev=1.0) # 基于正态分布随机数填充
+tf.multinomial(logits=x, num_samples=12)  # logits的shape=[batch, num_class]每行是几个类别的概率分布，可以不归一，但类型必须是float型。num_samples是采样数量，就是基于logits每行的分布，采样n个样本。输出shape=[batch, num_samples]
+tf.random_normal(shape=[9, 3], mean=0.0, stddev=1.0)  # 基于正态分布随机数填充
 
 """训练、建模："""
 '''损失函数：'''
@@ -94,6 +98,8 @@ tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.argmax(y_label, 1), log
 tf.squared_difference(x, y)  # 平方差(x-y)(x-y)
 
 tf.nn.nce_loss(weights=x, biases=y, labels=y, inputs=x, num_sampled=10, num_classes=50000)  # cbow和skip-gram训练时打包的一个损失函数(目标函数)，详见word2vec理解
+
+tf.nn.sampled_softmax_loss(weights=weights, biases=bias, inputs=inputs, labels=y_label, num_sampled=128, num_classes=1024)  # 这是通过采样来加速计算交叉熵的方法。weights shape=[num_class, dim], bias shape=[num_class], input shape=[batch, dim], labels shape=[batch, num_true] 值=int型正确类别的index
 
 # 不等价分类
 tf.reduce_mean(tf.where(tf.greater(x, y), x, y))
@@ -140,8 +146,10 @@ tf.nn.conv2d(inputs, weights, strides=[1, 2, 2, 1], padding='SAME')  # stride=�
 tf.layers.max_pooling1d(inputs, pool_size=2, strides=1)  # pool_size=池化窗口
 tf.nn.max_pool(inputs, ksize=[1, 1, 1, 1], strides=[1, 2, 2, 1], padding='SAME')  # 其它参数同上，ksize的格式很奇葩与stride相同[1,2,2,1]。[不同的样本, 宽, 高, 深]
 
+tf.layers.conv2d_transpose(inputs, filters=32, kernel_size=[4, 4], strides=2) # 反向的cnn
 import tensorflow.contrib.slim as slim
-slim.convolution2d_transpose(inputs, num_outputs=32, kernel_size=[4, 4], stride=2) # 这个貌似是反向的cnn
+
+slim.convolution2d_transpose(inputs, num_outputs=32, kernel_size=[4, 4], stride=2)  # 这个貌似是反向的cnn
 
 '''rnn'''
 ## 所有的rnn单元实现，都只能接收2D的input[batch, input_size]，多维数据必须转为1维

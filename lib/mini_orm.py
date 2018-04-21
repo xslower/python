@@ -221,7 +221,7 @@ class Model(object):
         vals.extend(cls.expr.values())
         sql = 'UPDATE %s SET %s %s;' % (
             table, ', '.join(['`' + key + '` = %s' for key in kvs.keys()]), where)
-        print(sql, vals)
+        # print(sql, vals)
         return Conn.execute(sql, vals).fetchone()
 
     @classmethod

@@ -89,7 +89,7 @@ def bids_filter(bids):
 class credit_code:
     AAA, AA, A, B, C, D, E, F, G, H, Non = 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
     map = {'H': H, 'G': G, 'F': F, 'E': E, 'D': D, 'C': C, 'B': B, 'A': A, 'AA': AA, 'AAA': AAA, None: Non}
-    rate = {AAA: 8, AA: 10.3, A: 16, B: 22, C: 28, D: 38, E: 58, F: 78, G: 98, Non: 150}
+    rate = {AAA: 8, AA: 11.2, A: 16, B: 22, C: 28, D: 38, E: 58, F: 78, G: 98, Non: 150}
     limit = {AAA: 500, AA: 2000, A: 100, B: 90, C: 80, D: 70, E: 40, F: 30, G: 20, Non: 0}
     want_rate = {'pre_buy': 3.0, 'up2': 2.0, 'up1': 1.4, 'eq': 0.8, 'dw': 1.6}
 

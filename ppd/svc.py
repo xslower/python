@@ -46,7 +46,7 @@ def objToX(bid):
            bid.successCount, bid.wasteCount, bid.cancelCount, bid.failedCount, bid.normalCount, bid.overdueLessCount, bid.overdueMoreCount,
            # _divide(bid.overdueLessCount, bid.normalCount),
 
-           bid.certificateValidate, bid.nciicIdentityCheck, bid.phoneValidate, bid.videoValidate, bid.creditValidate, bid.educateValidate,
+           bid.certificateValidate, bid.nciicIdentityCheck, bid.phoneValidate, bid.creditValidate,
 
            bid.months, bid.gender, word2int.edu_val(bid.educationDegree), word2int.study_val(bid.studyStyle), bid.age]
 
@@ -64,8 +64,7 @@ def dicToX(info):
            info['SuccessCount'], info['WasteCount'], info['CancelCount'], info['FailedCount'], info['NormalCount'],
            info['OverdueLessCount'], info['OverdueMoreCount'],
 
-           info['CertificateValidate'], info['NciicIdentityCheck'], info['PhoneValidate'], info['VideoValidate'],
-           info['CreditValidate'], info['EducateValidate'],
+           info['CertificateValidate'], info['NciicIdentityCheck'], info['PhoneValidate'], info['CreditValidate'],
 
            info['Months'], info['Gender'], word2int.edu_val(info['EducationDegree']),
            word2int.study_val(info['StudyStyle']), info['Age']]

@@ -5,6 +5,7 @@ from header import *
 # from api_op import *
 import svc
 import api_op as api
+
 # from header import config
 
 _key = 'Result'
@@ -45,7 +46,6 @@ def buy_bids(good_list, amount):
     return succ, fail
 
 
-
 def update_bid_db(binfo_list, succ_list, fail_list, bad_list, field, mod):
     # 更新db信息
     if len(binfo_list) > 0:
@@ -71,6 +71,7 @@ def _merge_bid(binfo, bids):
                 break
     return binfo
 
+
 def bids_filter(bids):
     ids = []
     for dic in bids:
@@ -83,12 +84,11 @@ def bids_filter(bids):
         ids.append(dic[k_list_id])
     return ids
 
+
 # 暂时只读第一页，
-def fetch_loan_list():
-    log.info('fetch loan list')
+def fetch_loan_list(page = 1):
+    log.info('fetch loan list page %d', page)
     bid_info_list = []
-    page = 1
-    # while True:
     bids = api.get_loan_list(page)
     if bids is None or len(bids) == 0:
         log.info('empty list')
@@ -122,13 +122,9 @@ def fetch_loan_list():
             if binfo is None or len(binfo) == 0:
                 break
             predict_bid(binfo)
-            # log.info('%s to %s', start, end)
-            # binfo = _merge_bid(binfo, bids)
-            # bid_info_list.extend(binfo)
-        # if len(bids) < 20:
-        #     break
-        # page += 1
-
+    # 递归读取后面的页面
+    if len(bids) > 35 and page < 10:
+        fetch_loan_list(page + 1)
 
 def predict_bid(binfo):
     id_key = k_list_id
@@ -152,7 +148,7 @@ def predict_bid(binfo):
             succ = try_buy_bid(ids[i], config.bid_amount)
             if succ:
                 log.info('buyed id: %s', ids[i])
-            #     config.add_bid_count()
+                #     config.add_bid_count()
     log.info('predict: %s', y_pred)
 
 

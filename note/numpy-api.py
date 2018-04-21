@@ -26,3 +26,8 @@ std = np.std(a, axis=0)  # 标准差 (a-meam)/std # 标准化
 new_a = a[np.newaxis, :]  # 在最前面增加一个纬度。new_a=[[1,2,3]]
 new_b = a[:, np.newaxis]  # 最后面增加一维，=[[1],[2],[3]]
 b = np.squeeze(a, axis=None) # 把len=1的维度消去，[[0],[1]]=[0,1], axis指定纬度后只消指定维,指定维度的len必须=1
+
+'''概率'''
+np.random.randint(low=0, high=10, size=(10,8)) # 生成一个指定shape的平均分布随机整数矩阵, [low, high]
+np.random.random_integers(low=0, high=10, size=(8,8)) # 功能同上，[low, high)
+np.random.normal(loc=0.0, scale=1.0, size=(5,5)) # 生成一个指定shape的正态分布随机数矩阵。loc=偏移，scale=标准差
