@@ -46,7 +46,7 @@ tf.squeeze(x, axis=None)  # 去掉长度=1的那些纬度，例：tf.shape(t) = 
 tf.reduce_mean(x, axis=0)  # 延着指定纬度计算平均值x[mean][i][j]，不指定纬度则计算全部值的平均值
 
 tf.range(0, 10, 0)  # 跟python 的range一样生成一个0到9的list
-tf.concat([x, y], axis=1)  # 把两个同shape的tensor合并到一起; axis延某一维合并[[0,1],[1,2]] + [[2,4],[3,6]] = [[0,1],[1,2],[2,4],[3,6]](axis=0) = [[0,1,2,4],[1,2,3,6]](axis=1)
+tf.concat([x, y], axis=1)  # 把两个同shape的tensor合并到一起; axis延某一维合并。[[0,1],[1,2]] + [[2,4],[3,6]] = [[0,1],[1,2],[2,4],[3,6]](axis=0) = [[0,1,2,4],[1,2,3,6]](axis=1)
 tf.slice(tensor, begin=[1, 0, 0], size=[1, 1, 3])  # 数组切片，begin是起始位置，size[i]是第i维需要的元素个数
 tf.strided_slice(tensor, [1], [6])  # = labels[1:6]，推荐直接使用py风格的tensor[1:6]
 
@@ -65,9 +65,10 @@ from tensorflow.python.util import nest
 
 array_ops.split(tensor, num_or_size_splits=2, axis=0)  # 把tensor延axis方向上切为小块的tensor，split是一个scalar,指定则平均分，否则每片多少由split指定
 tf.split(tensor, num_or_size_splits=[2, 3, 4], axis=1)  # 与上相同
+# 这些方法的本质就是把一个tensor拆为一个tensor数组，或者把tensor数组合成一个tensor
 tf.unstack(tensor, axis=0)  # 输入shape是[a,b,c,d],axis=0，则输出是([b,c,d]...)有a个
-tf.stack(tensor, axis=0)  # 连接张量。输入N个[a,b,c],axis=0，则输出[N,a,b,c]，axis=1，则输出[a,N,b,c]
-array_ops.concat(tensor, axis=1)  # 把tensor里的张量延方向合并。例：([[1,2,3],[4,5,6]],[[3,2,1],[6,5,4]])，延0合并=[[1,2,3],[4,5,6],[3,2,1],[6,5,4]]，延1合并=[[1,2,3,3,2,1],[4,5,6,6,5,4]]。tf里经常延1合并，是在每一个batch上合并成一个长向量。
+tf.stack([tensor], axis=0)  # 连接张量。输入N个[a,b,c],axis=0，则输出[N,a,b,c]，axis=1，则输出[a,N,b,c]
+array_ops.concat([tensor], axis=1)  # 把tensor里的张量延方向合并。例：([[1,2,3],[4,5,6]],[[3,2,1],[6,5,4]])，延0合并=[[1,2,3],[4,5,6],[3,2,1],[6,5,4]]，延1合并=[[1,2,3,3,2,1],[4,5,6,6,5,4]]。tf里经常延1合并，是在每一个batch上合并成一个长向量。
 
 nest.flatten(x)  # 内部用递归的方式把N维输入，转为1维的list输出
 nest.is_sequence(x)  # isinstance(x, collections.Sequence) 1维以上的数组都=True

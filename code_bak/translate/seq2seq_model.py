@@ -1,18 +1,3 @@
-# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
 """Sequence-to-sequence model with an attention mechanism."""
 
 from __future__ import absolute_import
@@ -129,34 +114,45 @@ class Seq2SeqModel(object):
       cell = tf.contrib.rnn.MultiRNNCell([single_cell() for _ in range(num_layers)])
 
     # The seq2seq function: we use embedding for the input and attention.
+    # def seq2seq_f(encoder_inputs, decoder_inputs, do_decode):
+    #   return tf.contrib.legacy_seq2seq.embedding_attention_seq2seq(
+    #       encoder_inputs,
+    #       decoder_inputs,
+    #       cell,
+    #       num_encoder_symbols=source_vocab_size,
+    #       num_decoder_symbols=target_vocab_size,
+    #       embedding_size=size,
+    #       output_projection=output_projection,
+    #       feed_previous=do_decode,
+    #       dtype=dtype)
     def seq2seq_f(encoder_inputs, decoder_inputs, do_decode):
-      return tf.contrib.legacy_seq2seq.embedding_attention_seq2seq(
-          encoder_inputs,
-          decoder_inputs,
-          cell,
-          num_encoder_symbols=source_vocab_size,
-          num_decoder_symbols=target_vocab_size,
-          embedding_size=size,
-          output_projection=output_projection,
-          feed_previous=do_decode,
-          dtype=dtype)
-
+        return tf.contrib.legacy_seq2seq.embedding_attention_seq2seq(
+            encoder_inputs,  # tensor of input seq
+            decoder_inputs,  # tensor of decoder seq
+            cell,  # 自定义的cell,可以是GRU/LSTM, 设置multilayer等
+            num_encoder_symbols=source_vocab_size,  # 英语词典大小 40000
+            num_decoder_symbols=target_vocab_size,  # 法语词典大小 40000
+            embedding_size=size,  # embedding 维度
+            output_projection=output_projection,  # 不设定的话输出维数可能很大(取决于词表大小)，设定的话投影到一个低维向量
+            feed_previous=do_decode,  # false: 训练 ；True: 测试
+            dtype=dtype)
     # Feeds for inputs.
     self.encoder_inputs = []
     self.decoder_inputs = []
     self.target_weights = []
-    for i in xrange(buckets[-1][0]):  # Last bucket is the biggest one.
+    for i in range(buckets[-1][0]):  # Last bucket is the biggest one.
       self.encoder_inputs.append(tf.placeholder(tf.int32, shape=[None],
                                                 name="encoder{0}".format(i)))
-    for i in xrange(buckets[-1][1] + 1):
-      self.decoder_inputs.append(tf.placeholder(tf.int32, shape=[None],
-                                                name="decoder{0}".format(i)))
-      self.target_weights.append(tf.placeholder(dtype, shape=[None],
-                                                name="weight{0}".format(i)))
+    for i in range(buckets[-1][1] + 1):
+      # encoder_inputs 这个列表对象中的每一个元素表示一个占位符，其名字分别为encoder0, encoder1,…,encoder39，encoder{i}的几何意义是编码器在时刻i的输入。
+      self.decoder_inputs.append(tf.placeholder(tf.int32, shape=[None], name="decoder{0}".format(i)))
+      # target_weights 是一个与 decoder_outputs 大小一样的 0-1 矩阵。该矩阵将目标序列长度以外的其他位置填充为标量值 0。
+      self.target_weights.append(tf.placeholder(dtype, shape=[None], name="weight{0}".format(i)))
 
     # Our targets are decoder inputs shifted by one.
+    # targets是decoder后移一位得到的
     targets = [self.decoder_inputs[i + 1]
-               for i in xrange(len(self.decoder_inputs) - 1)]
+               for i in range(len(self.decoder_inputs) - 1)]
 
     # Training outputs and losses.
     if forward_only:
@@ -166,7 +162,7 @@ class Seq2SeqModel(object):
           softmax_loss_function=softmax_loss_function)
       # If we use output projection, we need to project outputs for decoding.
       if output_projection is not None:
-        for b in xrange(len(buckets)):
+        for b in range(len(buckets)):
           self.outputs[b] = [
               tf.matmul(output, output_projection[0]) + output_projection[1]
               for output in self.outputs[b]
@@ -184,7 +180,7 @@ class Seq2SeqModel(object):
       self.gradient_norms = []
       self.updates = []
       opt = tf.train.GradientDescentOptimizer(self.learning_rate)
-      for b in xrange(len(buckets)):
+      for b in range(len(buckets)):
         gradients = tf.gradients(self.losses[b], params)
         clipped_gradients, norm = tf.clip_by_global_norm(gradients,
                                                          max_gradient_norm)
@@ -228,11 +224,11 @@ class Seq2SeqModel(object):
 
     # Input feed: encoder inputs, decoder inputs, target_weights, as provided.
     input_feed = {}
-    for l in xrange(encoder_size):
-      input_feed[self.encoder_inputs[l].name] = encoder_inputs[l]
-    for l in xrange(decoder_size):
-      input_feed[self.decoder_inputs[l].name] = decoder_inputs[l]
-      input_feed[self.target_weights[l].name] = target_weights[l]
+    for i in range(encoder_size):
+      input_feed[self.encoder_inputs[i].name] = encoder_inputs[i]
+    for i in range(decoder_size):
+      input_feed[self.decoder_inputs[i].name] = decoder_inputs[i]
+      input_feed[self.target_weights[i].name] = target_weights[i]
 
     # Since our targets are decoder inputs shifted by one, we need one more.
     last_target = self.decoder_inputs[decoder_size].name
@@ -245,8 +241,8 @@ class Seq2SeqModel(object):
                      self.losses[bucket_id]]  # Loss for this batch.
     else:
       output_feed = [self.losses[bucket_id]]  # Loss for this batch.
-      for l in xrange(decoder_size):  # Output logits.
-        output_feed.append(self.outputs[bucket_id][l])
+      for i in range(decoder_size):  # Output logits.
+        output_feed.append(self.outputs[bucket_id][i])
 
     outputs = session.run(output_feed, input_feed)
     if not forward_only:
@@ -275,10 +271,11 @@ class Seq2SeqModel(object):
 
     # Get a random batch of encoder and decoder inputs from data,
     # pad them if needed, reverse encoder inputs and add GO to decoder.
-    for _ in xrange(self.batch_size):
+    for _ in range(self.batch_size):
       encoder_input, decoder_input = random.choice(data[bucket_id])
 
       # Encoder inputs are padded and then reversed.
+      # 语句后面加占位符，并反转
       encoder_pad = [data_utils.PAD_ID] * (encoder_size - len(encoder_input))
       encoder_inputs.append(list(reversed(encoder_input + encoder_pad)))
 
@@ -291,20 +288,22 @@ class Seq2SeqModel(object):
     batch_encoder_inputs, batch_decoder_inputs, batch_weights = [], [], []
 
     # Batch encoder inputs are just re-indexed encoder_inputs.
-    for length_idx in xrange(encoder_size):
+    # 貌似就是把上面的encoder_inputs转置一下[batch, length]->[length, batch]
+    for length_idx in range(encoder_size):
       batch_encoder_inputs.append(
           np.array([encoder_inputs[batch_idx][length_idx]
-                    for batch_idx in xrange(self.batch_size)], dtype=np.int32))
+                    for batch_idx in range(self.batch_size)], dtype=np.int32))
 
     # Batch decoder inputs are re-indexed decoder_inputs, we create weights.
-    for length_idx in xrange(decoder_size):
+    # 转置
+    for length_idx in range(decoder_size):
       batch_decoder_inputs.append(
           np.array([decoder_inputs[batch_idx][length_idx]
-                    for batch_idx in xrange(self.batch_size)], dtype=np.int32))
+                    for batch_idx in range(self.batch_size)], dtype=np.int32))
 
       # Create target_weights to be 0 for targets that are padding.
       batch_weight = np.ones(self.batch_size, dtype=np.float32)
-      for batch_idx in xrange(self.batch_size):
+      for batch_idx in range(self.batch_size):
         # We set weight to 0 if the corresponding target is a PAD symbol.
         # The corresponding target is decoder_input shifted by 1 forward.
         if length_idx < decoder_size - 1:

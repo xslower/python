@@ -127,6 +127,7 @@ def create_vocabulary(vocabulary_path, data_path, max_vocabulary_size, tokenizer
         if None, basic_tokenizer will be used.
       normalize_digits: Boolean; if true, all digits are replaced by 0s.
     """
+    '''一次一行遍历数据文件，统计每个词的频率，从高到底排列，超过指定大小则截取'''
     if not gfile.Exists(vocabulary_path):
         print("Creating vocabulary %s from data %s" % (vocabulary_path, data_path))
         vocab = {}
@@ -171,6 +172,7 @@ def initialize_vocabulary(vocabulary_path):
     Raises:
       ValueError: if the provided vocabulary_path does not exist.
     """
+    '''把文本中的词，以work->idx的dict形式加载到内存'''
     if gfile.Exists(vocabulary_path):
         rev_vocab = []
         with gfile.GFile(vocabulary_path, mode="rb") as f:
@@ -199,7 +201,7 @@ def sentence_to_token_ids(sentence, vocabulary, tokenizer = None, normalize_digi
     Returns:
       a list of integers, the token-ids for the sentence.
     """
-
+    '''把句子转化为词id串，例如[1,2,4,7]'''
     if tokenizer:
         words = tokenizer(sentence)
     else:
@@ -225,6 +227,7 @@ def data_to_token_ids(data_path, target_path, vocabulary_path, tokenizer = None,
         if None, basic_tokenizer will be used.
       normalize_digits: Boolean; if true, all digits are replaced by 0s.
     """
+    '''把文本文件里的每一句都转为词id串，并写入到文件'''
     if not gfile.Exists(target_path):
         print("Tokenizing data in %s" % data_path)
         vocab, _ = initialize_vocabulary(vocabulary_path)
