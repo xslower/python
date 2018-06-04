@@ -4,11 +4,24 @@ from header import *
 
 page_limit = 10
 
+def deal_ret(ret):
+    if isinstance(ret, str):
+        print('ret is str:', ret)
+        return
+    k_code = 'Code'
+    keys = ret.keys()
+    if k_code in keys:
+        code = ret[k_code]
+        if code == 'GTW-BRQ-INVALIDTOKEN':
+            config.refresh_token()
+        elif code == 'GTW-BRQ-FREQUENTLY':
+            raise Exception('frequently')
 
 # 用户已投标情况
 def get_bid_list(token, start, end, idx):
     data = {'StartTime': time_plus.std_date(start), 'EndTime': time_plus.std_date(end), 'PageIndex': idx, 'PageSize': page_limit}
     ret = pcli.send(url.u_bid_list, data, token)
+    deal_ret(ret)
     # print(ret)
     bl = []
     max_page = 1
@@ -35,6 +48,7 @@ def get_bid_info(ids):
 def get_repay_info(token, lid):
     data = {'ListingId': lid}
     ret = pcli.send(url.repay, data, token)
+    deal_ret(ret)
     key = 'ListingRepayment'
     return get_dict_vals(ret, key)
 
@@ -137,10 +151,11 @@ def bid_list(open_id, start_after = 0, span = 20):
 # 更新还款信息。这个要定期更新,一周更新一次。12-8
 def update_repay(open_id):
     tk = config.get_token(open_id)
-    bid_iter = p_bids_real.where(openId=open_id).ge('listingId', 0).lt('repayStatus', 98).select()
+    bid_iter = p_bids_real.where(openId=open_id).ge('listingId', 10).lt('repayStatus', 98).select()
     for bid in bid_iter:
         lid = bid.listingId
-        if lid < 10:
+        # 逾期大于90天已记为坏账，无需查询状态了
+        if bid.overdueDays > 90:
             continue
         log.info(lid)
         # 确认是哪种标
@@ -177,7 +192,7 @@ def update_repay(open_id):
             log.info(bid)
 
         bid.save()
-        time.sleep(0.5)
+        time.sleep(1.5)
     pass
 
 
@@ -233,6 +248,7 @@ def update_all():
     span = 3600 * 24 * 6
     harf_day = 3600 * 12
     last = int(time.time()) - 3600 * 24 * 30
+    #config.refresh_token()
     while True:
         now = int(time.time())
         if now - last < span:
@@ -244,8 +260,7 @@ def update_all():
         # bid_list(niude_id, start_after)
         update_repay(xslower_id)
         # update_repay(niude_id)
-        config.refresh_token()
-        os.popen('sh restart_norm.sh', mode='w')
+        # os.popen('sh restart_norm.sh', mode='w')
         # os.popen('restart_debt.sh')
         last = now
         log.info(time_plus.std_datetime(now))
@@ -253,8 +268,8 @@ def update_all():
 
 if __name__ == '__main__':
     # update_debt()
+    #config.reload_token()
     update_all()
-    # config.reload_token()
 """
 todo 
 1.仔细研究下数据归一化，非常重要

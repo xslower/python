@@ -10,23 +10,26 @@ import api_op as api
 
 _key = 'Result'
 _msg = 'ResultMessage'
-
+_code = 'Code'
 
 def try_buy_bid(list_id, amount):
     succ = False
     for i in range(len(config.users)):
         u = config.users[i]
         ret = api.buy_bid(u.tk, list_id, amount)
-        if ret is None or _key not in ret.keys():
+        keys = ret.keys()
+        log.info('%s', ret)
+        if ret is None or _key not in keys:
+            if _code in keys and ret[_code] == 'GTW-BRQ-INVALIDTOKEN':
+                config.refresh_token()
             continue
         code = ret[_key]
         if code == 0:
             succ = True
             break
-        elif code == 4001:  # 用户余额不足，换人
+        elif code == 4001:  # 用户余额不足
             continue
         else:
-            log.info('%s', ret)
             break
     return succ
 
@@ -158,7 +161,7 @@ def run():
         dx, dy = svc.init_data(c)
         config.svc = svc.my_svc()
         config.svc.train(dx, dy)
-        config.svc.evaluate(dx[-800:], dy[-800:])
+        config.svc.evaluate(dx[-1200:], dy[-1200:])
     # run
     wait_sec = 1
 

@@ -1,3 +1,13 @@
+'''基本语法'''
+iter([]) # 把一个可迭代的类型转为迭代器 ps:有个毛用，直接遍历不就ok了
+
+
+from collections import defaultdict
+dd = defaultdict(list) # 带默认值的map，参数是一个类型. key取不到时返回类型的初始化值
+
+from itertools import zip_longest
+zip_longest([], fillvalue=None) # 把一堆sequence并排放一起，遍历到最长的那个结束为止，其它的用fillvalue填充
+
 import re # 正则表达式
 
 _WORD_SPLIT = re.compile("([.,!?\"':;)(])")

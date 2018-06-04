@@ -5,10 +5,12 @@ from header import *
 # from api_op import *
 import svc
 import api_op as api
+
 # from header import config
 
 _key = 'Result'
 _msg = 'ResultMessage'
+_code = 'Code'
 
 
 def try_buy_debt(debt_id):
@@ -16,7 +18,10 @@ def try_buy_debt(debt_id):
     for u in config.users:
         ret = api.buy_debt(u.tk, debt_id)
         log.info('buy_debt %d ret %s ', debt_id, ret)
-        if ret is None or _key not in ret.keys():
+        keys = ret.keys()
+        if ret is None or _key not in keys:
+            if _code in keys and ret[_code] == 'GTW-BRQ-INVALIDTOKEN':
+                config.reload_token()
             continue
         code = ret[_key]
         if code == 0:
@@ -73,6 +78,7 @@ def _merge_bid(binfo, bids):
                 break
     return binfo
 
+
 def bids_filter(bids):
     ids = []
     for dic in bids:
@@ -89,7 +95,7 @@ def bids_filter(bids):
 class credit_code:
     AAA, AA, A, B, C, D, E, F, G, H, Non = 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
     map = {'H': H, 'G': G, 'F': F, 'E': E, 'D': D, 'C': C, 'B': B, 'A': A, 'AA': AA, 'AAA': AAA, None: Non}
-    rate = {AAA: 8, AA: 11.2, A: 16, B: 22, C: 28, D: 38, E: 58, F: 78, G: 98, Non: 150}
+    rate = {AAA: 8, AA: 11.5, A: 16, B: 22, C: 28, D: 38, E: 58, F: 78, G: 98, Non: 150}
     limit = {AAA: 500, AA: 2000, A: 100, B: 90, C: 80, D: 70, E: 40, F: 30, G: 20, Non: 0}
     want_rate = {'pre_buy': 3.0, 'up2': 2.0, 'up1': 1.4, 'eq': 0.8, 'dw': 1.6}
 
@@ -161,6 +167,12 @@ def filter_debt(debt):
         ought_rate += 1.0
     elif left_num == 2:
         ought_rate += 0.5
+    elif left_num >= 18:
+        ought_rate += 0.5
+    elif left_num >= 24:
+        ought_rate += 1.0
+    elif left_num >= 30:
+        ought_rate += 1.5
     # 根据最近还款日短近，增加利率要求。
     days = debt['Days']
     if days <= 15:  # 还款距离越短，利率要求越高
@@ -276,7 +288,7 @@ def predict_bid(binfo):
             succ = try_buy_debt(ids[i])
             if succ:
                 log.info('buyed id: %s', ids[i])
-            #     config.add_bid_count()
+                #     config.add_bid_count()
     log.info('predict: %s', y_pred)
 
 
@@ -312,7 +324,6 @@ def main():
     log.basicConfig(filename='log/debt.log', filemode="w", level=log.INFO, format='%(message)s')
     save_pid('debt')
     run()
-
 
 
 if __name__ == '__main__':

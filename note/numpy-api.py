@@ -1,6 +1,6 @@
 import numpy as np
 
-# 貌似是批装数组的
+# 貌似是拼装数组的
 a = np.array((1, 2, 3))
 b = np.array((2, 3, 4))
 np.hstack((a, b))  # array([1, 2, 3, 2, 3, 4])
@@ -31,3 +31,5 @@ b = np.squeeze(a, axis=None) # 把len=1的维度消去，[[0],[1]]=[0,1], axis�
 np.random.randint(low=0, high=10, size=(10,8)) # 生成一个指定shape的平均分布随机整数矩阵, [low, high]
 np.random.random_integers(low=0, high=10, size=(8,8)) # 功能同上，[low, high)
 np.random.normal(loc=0.0, scale=1.0, size=(5,5)) # 生成一个指定shape的正态分布随机数矩阵。loc=偏移，scale=标准差
+
+np.linalg.norm(a, ord=None) # ord=None时求平方和的开方，ord!=None时就是ord次方再开ord方

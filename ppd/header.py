@@ -159,7 +159,10 @@ def save_pid(pre):
 
 def get_dict_vals(dic, key):
     if dic is None:
-        log.info('dic is none')
+        print('dic is none')
+        return []
+    elif isinstance(dic, str):
+        print('dic is str: %s', dic)
         return []
     elif key not in dic.keys():
         log.info('dic: [%s], key: [%s]', dic, key)
