@@ -52,6 +52,8 @@ class Seq2SeqModel(object):
         length. Training instances that have inputs longer than I or outputs
         longer than O will be pushed to the next bucket and padded accordingly.
         We assume that the list is sorted, e.g., [(2, 4), (8, 16)].
+        就是根据句子长度分几个桶，避免使用最大长度，很短的句子pad的太多
+
       size: number of units in each layer of the model.
       num_layers: number of layers in the model.
       max_gradient_norm: gradients will be clipped to maximally this norm.
@@ -114,17 +116,6 @@ class Seq2SeqModel(object):
       cell = tf.contrib.rnn.MultiRNNCell([single_cell() for _ in range(num_layers)])
 
     # The seq2seq function: we use embedding for the input and attention.
-    # def seq2seq_f(encoder_inputs, decoder_inputs, do_decode):
-    #   return tf.contrib.legacy_seq2seq.embedding_attention_seq2seq(
-    #       encoder_inputs,
-    #       decoder_inputs,
-    #       cell,
-    #       num_encoder_symbols=source_vocab_size,
-    #       num_decoder_symbols=target_vocab_size,
-    #       embedding_size=size,
-    #       output_projection=output_projection,
-    #       feed_previous=do_decode,
-    #       dtype=dtype)
     def seq2seq_f(encoder_inputs, decoder_inputs, do_decode):
         return tf.contrib.legacy_seq2seq.embedding_attention_seq2seq(
             encoder_inputs,  # tensor of input seq
@@ -141,10 +132,10 @@ class Seq2SeqModel(object):
     self.decoder_inputs = []
     self.target_weights = []
     for i in range(buckets[-1][0]):  # Last bucket is the biggest one.
+      # encoder_inputs 这个列表对象中的每一个元素表示一个占位符，其名字分别为encoder0, encoder1,…,encoder39，encoder{i}的几何意义是编码器在时刻i的输入。
       self.encoder_inputs.append(tf.placeholder(tf.int32, shape=[None],
                                                 name="encoder{0}".format(i)))
     for i in range(buckets[-1][1] + 1):
-      # encoder_inputs 这个列表对象中的每一个元素表示一个占位符，其名字分别为encoder0, encoder1,…,encoder39，encoder{i}的几何意义是编码器在时刻i的输入。
       self.decoder_inputs.append(tf.placeholder(tf.int32, shape=[None], name="decoder{0}".format(i)))
       # target_weights 是一个与 decoder_outputs 大小一样的 0-1 矩阵。该矩阵将目标序列长度以外的其他位置填充为标量值 0。
       self.target_weights.append(tf.placeholder(dtype, shape=[None], name="weight{0}".format(i)))
@@ -198,6 +189,7 @@ class Seq2SeqModel(object):
       session: tensorflow session to use.
       encoder_inputs: list of numpy int vectors to feed as encoder inputs.
       decoder_inputs: list of numpy int vectors to feed as decoder inputs.
+      这里应该是翻译输出的语句。感觉直接使用enc的输出不就ok了
       target_weights: list of numpy float vectors to feed as target weights.
       bucket_id: which bucket of the model to use.
       forward_only: whether to do the backward step or only forward.

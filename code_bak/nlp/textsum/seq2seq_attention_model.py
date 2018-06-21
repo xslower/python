@@ -103,7 +103,7 @@ class Seq2SeqAttentionModel(object):
                 embedding = tf.get_variable('embedding', [vsize, hps.emb_dim], dtype=tf.float32, initializer=tf.truncated_normal_initializer(stddev=1e-4))
                 emb_encoder_inputs = [tf.nn.embedding_lookup(embedding, x) for x in encoder_inputs]
                 emb_decoder_inputs = [tf.nn.embedding_lookup(embedding, x) for x in decoder_inputs]
-            # 这里没有用系统的MultiRnn去封装，而是手动的把上一层输出传递给下一层输入，但是没有传入状态
+            # 这里使用的是双向rnn，无法使用MultiRnn，所以手动的把上一层输出传递给下一层输入，但是没有传入状态
             for layer_i in xrange(hps.enc_layers):
                 with tf.variable_scope('encoder%d' % layer_i), tf.device(self._next_device()):
                     cell_fw = tf.contrib.rnn.LSTMCell(hps.num_hidden, initializer=tf.random_uniform_initializer(-0.1, 0.1, seed=123), state_is_tuple=False)

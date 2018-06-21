@@ -1,7 +1,11 @@
 # coding: utf-8
-
 import pymysql
 
+"""
+用法：
+bid_iter = p_bids_real.where(openId=open_id).ge('listingId', 10).lt('repayStatus', 98).select()
+
+"""
 
 class Field(object):
     pass

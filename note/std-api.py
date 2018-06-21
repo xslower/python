@@ -1,4 +1,6 @@
 '''基本语法'''
+## set=去重的list tuple=不能修改的list
+
 iter([]) # 把一个可迭代的类型转为迭代器 ps:有个毛用，直接遍历不就ok了
 
 
@@ -7,6 +9,8 @@ dd = defaultdict(list) # 带默认值的map，参数是一个类型. key取不�
 
 from itertools import zip_longest
 zip_longest([], fillvalue=None) # 把一堆sequence并排放一起，遍历到最长的那个结束为止，其它的用fillvalue填充
+from functools import reduce
+reduce(lambda x, y: x+y, [1,2,3]) # =6, 依后面系列的顺序调用前面的函数。
 
 import re # 正则表达式
 

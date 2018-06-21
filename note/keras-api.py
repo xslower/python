@@ -1,9 +1,8 @@
 """
 keras相关api
 """
-'''tf内的keras封装''''''和原生keras'''
+'''tf内的keras封装'''
 import tensorflow as tf
-import keras as kr
 
 x = tf.Variable()
 
@@ -27,9 +26,29 @@ y4 = pool(x)
 
 tf.keras.layers.MaxPooling2D()  # 与Conv2D类似
 
-kr.layers.Embedding(input_dim=1024, output_dim=50) # 把词idx转为相应的embedding向量
-kr.layers.LSTM(units=64)
-kr.layers.GRU()
-kr.layers.Dropout()
+'''和原生keras'''
 
+import keras as kr
+from keras.layers import Input,Dense,Embedding,Permute
+from keras.models import Model,Sequential
+
+# 标准调用
+model = Sequential([Dense(100, input_dim=(784,))]) # 第一层需要指定输入的数据shape
+model.add(Embedding(input_dim=784, output_dim=50)) # 把词idx转为相应的embedding向量
+model.add(kr.layers.Bidirectional(kr.layers.CuDNNGRU(units=64)))
+model.add(kr.layers.Dense(1))
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+model.fit(x, y1)
+
+# 函数式调用
+inputs = Input(shape=(784,))
+x = Dense(64, activation='relu')(inputs) # 这个全链接层适应力较强，如果input大于2维，内部则会reshape后计算，之后再reshape回来
+x = Permute([2,1])(x) # =tf.transpose(x, [0,2,1]) 交换第一维和第二维数据
+predictions = Dense(10, activation='softmax')(x)
+
+model = Model(inputs=inputs, outputs=predictions)
+model.compile(optimizer='rmsprop',
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
+model.fit(x, y1)  # starts training
 
