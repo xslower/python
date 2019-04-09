@@ -7,23 +7,23 @@ import numpy as np
 
 def divide(a, b):
     if b == 0:
-        b = 1
-
+        if a == 0:
+            a = 1
+        b = a
     return (a - b) / min(a, b)
 
 
 class Label(object):
-    spliter = [-50, -30, -15, 0, 15, 30, 45, 60, 90]
-    num_class = len(spliter) - 1
-    days = 30
-
     def __init__(self, k_line, d_line):
+        self.spliter = [-50, -30, -15, 0, 15, 30, 45, 60, 90]
+        self.num_class = len(self.spliter) - 1
         self.k_line = k_line
         self.d_line = d_line
         self.reward_table = np.zeros((len(k_line), 2, 2), dtype=np.float32)
-        self.up_table = np.zeros((len(k_line), 2), dtype=np.float32)
+        self.up_table = np.zeros((len(k_line)), dtype=np.float32)
         self.class_table = np.zeros((len(k_line), self.num_class), dtype=np.float32)
         self.decay = 0.9
+        self.days = 15
 
     def _clse_up(self, idx):
         # up = self.k_line[idx][O_CLSE_UP]
@@ -76,14 +76,25 @@ class Label(object):
 
     def calc_up(self):
         days = self.days
-        for i in range(len(self.k_line)):
-            mi = min(self.k_line[i:i + days, O_CLOSE])
-            mx = max(self.k_line[i:i + days, O_CLOSE])
-            close = self.k_line[i][O_CLOSE]
+        kl = self.k_line
+        for i in range(len(kl) - days):
+            # 未来一段时间的
+            y = 0 if kl[i][O_CLOSE] < kl[i - 1][O_CLOSE] else 1
+            mn, mx = 9999, 0
+            mni, mxi = 0, 0
+            for j in range(i, i + days):
+                val = self.k_line[j][O_CLOSE]
+                if val < mn:
+                    mn = val
+                    mni = j
+                if val > mx:
+                    mx = val
+                    mxi = j
             mul = 100
-            self.up_table[i][0] = divide(mi, close) * mul
-            self.up_table[i][1] = divide(mx, close) * mul
-
+            up = mn if mni < mxi else mx
+            up = divide(up, self.k_line[i][O_CLOSE]) * mul
+            self.up_table[i] = y
+            # 有衰减的未来一段时间的上涨下跌率
             # decay = 0.98
             # for i in range(1, len(self.k_line)-self.days):
             #     self.up_table[i] = np.sum(self.up_table[i:i+self.days])
@@ -125,49 +136,41 @@ class Label(object):
         return dis
 
 
-class Stock(object):
-    def __init__(self, x, y, dates, spliter = '2013-01-01'):
-        idx = 0
-        tmp_x = []
-        tmp_y = []
-        tmp_d = []
-        for i in range(len(dates)):
-            if dates[i] >= spliter:
-                idx = i
-                break
-            # 去掉不明显的标识
-            if np.sum(np.abs(y[i])) < 20:
-                continue
-            tmp_x.append(x[i])
-            tmp_y.append(y[i])
-            tmp_d.append(dates[i])
-        if idx == 0:
-            raise Exception('died stock')
-        self.train_x = np.array(tmp_x)
-        self.train_y = np.array(tmp_y)
-        self.train_date = tmp_d
-        self.test_x = x[idx:]
-        self.test_y = y[idx:]
-        self.test_date = dates[idx:]
+import random
+
+
+def shuffle(x, y, src):
+    ln = len(x)
+    indexes = list(range(ln))
+    random.shuffle(indexes)
+    tx = [0] * ln
+    ty = [0] * ln
+    tsrc = [0] * ln
+    for i in range(ln):
+        tx[i], ty[i], tsrc[i] = x[indexes[i]], y[indexes[i]], src[indexes[i]]
+    return tx, ty, tsrc
 
 
 O_CLOSE = 0
-O_VOLU = 1
-stock_file = 'data/stock/%s.csv'
+stock_file = 'data/cyb/%s.csv'
 
 # O_CLSE_UP = 1
-O_HIGH_UP = 2
-
+O_HIGH_UP = 1
 
 # O_OPEN_UP = 1
-# O_LOW_UP = 4
+O_LOW_UP = 2
 # O_TURN = 5
+
+O_VOLU = 1
 
 
 # 从csv文件中读取数据
 # 输出格式为：0-date, 1-close, 2-close_up, 3-high_up, 4-low_up, 5-turn_over, 6-volume
 def load_file(id, no_stop = False):
     I_DATE, I_OPEN, I_CLOSE, I_HIGH, I_LOW, I_VOL = 0, 1, 2, 3, 4, 5
+
+    def div(a, b):
+        return a
 
     id = stock_id(id)
     csv_file = open(stock_file % id, 'r')
@@ -178,25 +181,24 @@ def load_file(id, no_stop = False):
     for li in iter:
         if li[I_DATE] == '':
             continue
-        # 去掉停盘数据
         for i in range(1, len(li)):
             if li[i] == '':
                 li[i] = 0
             else:
                 li[i] = float(li[i])
+        # 去掉停盘数据
         if no_stop and li[I_VOL] < 1:
             continue
         date_line.append(li[I_DATE])
         new_li = np.zeros([O_VOLU + 1], dtype=np.float32)
         today_close = li[I_CLOSE]
-        new_li[O_CLOSE] = today_close
-        # new_li[O_OPEN_UP] = divide(li[I_OPEN], last_close) - 1
-        # new_li[O_CLSE_UP] = divide(today_close, last_close) - 1
-        # new_li[O_HIGH_UP] = divide(li[I_HIGH], last_close) - 1
-        # new_li[O_LOW_UP] = divide(li[I_LOW], last_close) - 1
+        new_li[O_CLOSE] = div(today_close, last_close)
+        # new_li[O_OPEN_UP] = div(li[I_OPEN], last_close)
+        # new_li[O_CLSE_UP] = div(today_close, last_close)
+        # new_li[O_HIGH_UP] = div(li[I_HIGH], last_close)
+        # new_li[O_LOW_UP] = div(li[I_LOW], last_close)
         # new_li[O_HIGH_UP] = li[I_HIGH]
         # 换手和成交量不变
-        # new_li[O_TURN] = li[I_TURN]
         new_li[O_VOLU] = li[I_VOL]
         last_close = today_close
         k_line.append(new_li)
@@ -210,79 +212,89 @@ def print_table(tb):
         print(tb[i])
 
 
-#
-def prepare_single(stock_id, obs_len = 300):
-    ss = preprocessing.StandardScaler()
-    d_line, k_line = load_file(stock_id, True)
-    label = Label(k_line, d_line)
-    # label.calc_class()
-    label.calc_up()
-    # print_table(label.class_table)
-    samples = []
-    # for i in range(len(k_line)-1):
-    #     print(k_line[i:i+1])
-    #     ss.fit_transform(k_line[i:i+1, 1:])
-    # print(type(k_line[0][1]))
-    new_dl = []
-    y = []
-    for i in range(obs_len, len(k_line) - label.days):
-        # 归一化前面所有的数据
-        block = k_line[:i]
-        norm = ss.fit_transform(block)
-        # 只取后面需要的
-        samples.append(norm[-obs_len:])
-        new_dl.append(d_line[i])
-        y.append(label.up_table[i])
-    # print(k_line[:10], samples[0])
-    s = Stock(np.array(samples), np.array(y), new_dl)
-    # print_table(s.test_x))
-    # print_table(s.test_y
-    return s
-
-
-def prepare(stock_id, base_id = '000001.XSHG'):
-    base = load_file(base_id)
-    stock = load_file(stock_id)
-
-    def merge_row(a, b):
-        del (a[0])
-        a.extend(b[1:])
-
-    y = []
-    j = 0
-    for i in range(len(base) - 1):
-        if stock[j][1] == stock[j][2] == 0:
-            j += 1
-            continue
-        # 判断日期是否相同
-        if base[i][0] == stock[j][0]:
-            merge_row(base[i], stock[j])
-            # base[i].extend(stock[j][1:])
-            # base[i].append(stock[j][0])
-            j += 1
-        elif base[i][0] < stock[j][0]:
-            empty = [0] * (len(stock[j]))
-            merge_row(base[i], empty)
-            # base[i].extend(empty)
-        else:
-            raise Exception('base date big than stock date')
-    # print(base[:10], base[-10:])
-    ss = preprocessing.StandardScaler()
-    x_norm = ss.fit_transform(base)
-    pkl_file = 'data/parsed/%s_x.pkl' % stock_id
-    xf = open(pkl_file, 'wb')
-    pickle.dump(x_norm, xf)
-    xf.close()
+def cac_label(x, dates, spliter = '2013-06-01'):
+    obs_len = 450
+    idx = 0
+    for i in range(len(dates)):
+        if dates[i] >= spliter:
+            idx = i
+            break
+    if idx == 0:
+        raise Exception('new stock')
+    sample = x[:idx]
+    if len(sample) < obs_len:
+        raise Exception('no enough data')
+    else:
+        sample = sample[-obs_len:]
+    high = max(x[idx:, O_CLOSE])
+    y = (high / x[idx][O_CLOSE] - 1)
+    return sample, y
 
 
 def stock_id(id):
+    if type(id) is str:
+        return id
     id = str(id)
-    full_id = '0' * (6 - len(id)) + id + '.XSHE'
+    full_id = '3' + '0' * (5 - len(id)) + id + '.XSHE'
     return full_id
+
+#
+def prepare_list(obs_len = 300):
+    ss = preprocessing.StandardScaler()
+    X = []
+    Y = []
+    for i in range(1, 740):
+        try:
+            stock = stock_id(i)
+            d_line, k_line = load_file(stock, True)
+            x, y = cac_label(k_line, d_line)
+            x = ss.fit_transform(x)
+            X.append(x)
+            Y.append(y)
+        except Exception as e:
+            continue
+    return np.array(X), np.array(Y)
+
+
+def prepare(stock_id, obs_len = 200, base_id = '000001.XSHG'):
+    b_d_line, b_k_line = load_file(base_id)
+    d_line, k_line = load_file(stock_id)
+    label = Label(k_line, d_line)
+    label.calc_up()
+    dl = []
+    Y = []
+    X = []
+
+    ss = preprocessing.StandardScaler()
+    for i in range(obs_len, len(b_d_line) - label.days):
+        # 判断日期是否相同
+        if b_d_line[i] != d_line[i]:
+            print(b_d_line[i], d_line[i])
+            continue
+        y = label.up_table[i]
+        # if -1 < y < 1: #涨跌不明显的去掉
+        #     continue
+        up = divide(k_line[i - 1][O_CLOSE], k_line[i - 2][O_CLOSE]) * 100
+        if -4.0 < up < 4.0:
+            continue
+        vec = np.concatenate((k_line[i - obs_len:i], b_k_line[i - obs_len:i]), axis=1)
+        vec = ss.fit_transform(vec)
+        X.append(vec)
+        Y.append(y)
+        dl.append(d_line[i])
+    # print(x,y,dl)
+    s = Stock(np.array(X), np.array(Y), dl)
+    return s
+    # print(base[:10], base[-10:])
+    # x_norm = ss.fit_transform(b_d_line)
+    # pkl_file = 'data/parsed/%s_x.pkl' % stock_id
+    # xf = open(pkl_file, 'wb')
+    # pickle.dump(x, xf)
+    # xf.close()
+
 
 
 if __name__ == '__main__':
-    d, k, s = prepare_single('000001')
-    print(d[:10], k[:10])
+    pass
 # fetch_stock_data('600600')
 # fetch_m_data('000001')

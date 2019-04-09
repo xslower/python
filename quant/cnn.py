@@ -173,7 +173,7 @@ if __name__ == '__main__':
     obses = []
     for i in range(1, 20):
         try:
-            obs = stock_data.prepare_single(i)
+            obs = stock_data.prepare_list(i)
             obses.append(obs)
         except Exception as e:
             print(e)

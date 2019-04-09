@@ -4,8 +4,11 @@ import time
 
 import numpy as np
 import tensorflow as tf
+import keras as kr
+from keras.layers import *
+from keras.models import Model
 
-sys.path.append('../../lib')
+sys.path.append('../lib')
 
 from qhead import *
 
@@ -21,13 +24,17 @@ def print_table(tb):
 
 class RnnEval(object):
     def __init__(self, obses):
+        self.num_layers = 1
         self._learn_rate = 0.03
         self.batch_size = 1
         self.epoch = 80
         self.rnn_units = 12
         self.num_y = 2
         input_shape = np.shape(obses[0].train_x[0])
-        self.input_size = input_shape[0] * input_shape[1]
+        if len(input_shape) == 2:
+            self.input_size = input_shape[0] * input_shape[1]
+        else:
+            self.input_size = input_shape[0]
         for i in range(len(obses)):
             obs = obses[i]
             num_step = len(obs.train_x) // self.batch_size
@@ -44,6 +51,21 @@ class RnnEval(object):
         self._define_train()
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
+
+
+    def _build_rnn_graph_cudnn(self, inputs, is_training):
+        """Build the inference graph using CUDNN cell."""
+        inputs = tf.transpose(inputs, [1, 0, 2])
+        self._cell = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=self.num_layers, num_units=self.rnn_units, input_size=self.rnn_units)
+        params_size_t = self._cell.params_size()
+        self._rnn_params = tf.get_variable("lstm_params", initializer=tf.random_uniform([params_size_t], -self.init_scale, self.init_scale), validate_shape=False)
+        c = tf.zeros([self.num_layers, self.batch_size, self.rnn_units], tf.float32)
+        h = tf.zeros([self.num_layers, self.batch_size, self.rnn_units], tf.float32)
+        self._initial_state = (tf.contrib.rnn.LSTMStateTuple(h=h, c=c),)
+        outputs, h, c = self._cell(inputs, h, c, self._rnn_params, is_training)
+        outputs = tf.transpose(outputs, [1, 0, 2])
+        outputs = tf.reshape(outputs, [-1, self.rnn_units])
+        return outputs, (tf.contrib.rnn.LSTMStateTuple(h=h, c=c),)
 
     def _build_rnn_net(self, inputs, is_train = True):
         cells = []
@@ -111,11 +133,13 @@ if __name__ == "__main__":
     log.basicConfig(stream=sys.stdout, level=log.INFO, format='%(message)s')
     # print(len(obs_x))
     obses = []
-    for i in range(2):
+    for i in range(1, 3):
         try:
-            obs = stock_data.prepare_single(i, 7)
+            obs = stock_data.prepare_list(i, 7)
+            # obs = stock_data.prepare(i)
             obses.append(obs)
-        except:
+        except Exception as e:
+            print(e)
             continue
     # obses.append(stock_data.prepare_single(2))
     # obses.append(stock_data.prepare_single(5))

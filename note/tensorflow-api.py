@@ -39,6 +39,9 @@ tf.assign(x, y)  # 把y赋值给x
 tf.multiply(x, y)  # x与y相乘 = x*y。规则；从后往前，维的长度必须相同，或者=1，例如[a,b,c]*[1] ok; [a,b,c]*[c] ok; [a,b,c]*[1,c] ok; [a,b,c]*[1,1,c] ok; [a,b,c]*[1,b,c] ok
 tf.matmul(x, y)  # 矩阵相乘，x与y的shape必须匹配，=2维时，就是[m,n]*[n,p]=[m,p], >2维时，最后2维之前的维数必须相等，然后对最后2维逐一做2维矩阵乘法[1,2,3,m,n]*[1,2,3,n,p]=[1,2,3,m,p]
 tf.argmax(y_label, axis=1)  # y_label是2维的，axis是操作哪一维。[[0,1,0],[1,0,0],[0,0,1]->[1,0,2]
+tf.norm(x, ord=1) # 计算x的p1范数
+tf.negative(x) # 取负
+y, idx = tf.unique(x) # 去重
 num_class = 5
 tf.one_hot(indices=y_label, depth=num_class)  # 把序列中每个值v变为一个向量，向量长度=depth，其中只有v所指的位置的值=1，其它都是0
 tf.expand_dims(tensor, axis=1)  # 把一个tensor扩充一维，axis=扩充第几维、=-1扩充最后一维。例如[1,2,3]->[[1],[2],[3]] -> [[[1]],[[2]],[[3]]]
@@ -58,12 +61,13 @@ tf.slice(tensor, begin=[1, 0, 0], size=[1, 1, 3])  # 数组切片，begin是起�
 tf.strided_slice(tensor, [1], [6])  # = labels[1:6]，推荐直接使用py风格的tensor[1:6]
 tf.tile(tensor, multiples=[2,3]) # tensor的第i维，重复multiples中第i个元素值遍
 
+tf.transpose(tensor, perm=[1, 2, 0])  # 例如：[depth, height, width] to [height, width, depth]。perm指定哪些纬度交换，[1, 2, 0]=第一维成为最后一维二三维成为一二维。矩阵转秩
+
 tf.nn.lrn(input)  # 卷积层之后使用的一种数据归一化方法，可以把大的值变得相对更大，小值相对更小，防止在层数增加时权重衰减
 tf.nn.xw_plus_b(x, weights, bias)  # 计算x * w + b
-tf.transpose(tensor, perm=[1, 2, 0])  # 例如：[depth, height, width] to [height, width, depth]。perm指定哪些纬度交换，[1, 2, 0]=第一维成为最后一维二三维成为一二维。矩阵转秩
-batch_x, batch_y = tf.train.batch([x, y], batch_size=10)  # 貌似专门用来打包输入数据的，一般x,y为两个queue，此方法会把打包为每次输出batch_size大小的x,y
-
 tf.nn.embedding_lookup(tensor, ids=[1, 2, 3])  # 这是根据ids里的索引idx，获取params里相应索引的值，
+tf.nn.softmax(x) #
+
 with tf.control_dependencies([x, y]):  # 梳理op运行关系的，必须先运行一些op，才能运行后面的。经常用于先计算summary
     pass
 
@@ -88,12 +92,19 @@ norm = tf.distributions.Normal(loc=mean, scale=stddev)  # 正态分布，loc=平
 norm.sample(sample_shape=1)  # 基于此分布生成一个目标shape=sample_shape的样本集
 norm.log_prob(value=1.1)  # 貌似是计算此分布某点的概率密度
 norm.entropy()  # Shannon entropy
+d = tf.polygamma(0.0, x) # = scipy.special.digamma(x) = scipy.special.polygamma(0, x)
+a = tf.digamma() #gamma的反函数,与上面相等
+b = tf.igamma()
+c = tf.lgamma(x) #=np.log(scipy.special.gamma(x)) gamma就是降乘在实数范围上的扩展
+ga = tf.distributions.Gamma(a, b)
 
 tf.multinomial(logits=x, num_samples=12)  # logits的shape=[batch, num_class]每行是几个类别的概率分布，可以不归一，但类型必须是float型。num_samples是采样数量，就是基于logits每行的分布，采样n个样本。输出shape=[batch, num_samples]
 tf.random_normal(shape=[9, 3], mean=0.0, stddev=1.0)  # 基于正态分布随机数填充
 
 """训练、建模："""
 '''损失函数：'''
+batch_x, batch_y = tf.train.batch([x, y], batch_size=10)  # 貌似专门用来打包输入数据的，一般x,y为两个queue，此方法会把打包为每次输出batch_size大小的x,y
+
 tf.nn.sigmoid_cross_entropy_with_logits(labels=y_label, logits=y)
 # 这个主要是面向2分类的
 
@@ -190,12 +201,23 @@ tf.contrib.rnn.LSTMBlockCell()  # 看代码+注释，貌似跟上面的实现基
 multi_cell = tf.nn.rnn_cell.MultiRNNCell([cell] * 3, state_is_tuple=True)  # 先定义好每层的cell传入
 output4, all_state = multi_cell(inputs, (new_state1, new_state2, new_state3))  # 状态是并行的，只在对应的层中流动；input->output是穿过所有层
 
-# cudnn封装，多层lstm，上面的可以手动指定每一层的cell具体实现，这里只能使用标准lstm
-cell = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=3, num_units=90, input_size=95)  # input_size是每个x的纬度，一般跟num_units相同，不然估计需要做线性变换
+'''下面cudnn的实现，调用过于麻烦，使用只能靠keras了'''
+from tensorflow.contrib.cudnn_rnn.python.ops import cudnn_rnn_ops
+# cudnn封装，多层lstm，上面的可以手动指定每一层的cell具体实现，这里使用标准lstm
+cell = cudnn_rnn_ops.CudnnLSTM(num_layers=3, num_units=90, input_size=95)  # input_size是每个x的纬度，一般跟num_units相同，不然估计需要做线性变换
+cudnn_gru = cudnn_rnn_ops.CudnnGRU(num_layers=3, num_units=50,
+    input_size=128,# 输入的大小，可能与 NUM_UNITS 不同。
+    input_mode='auto_select',# 表示在第一层之前的输入和实际计算之间是否有线性投影。它可以是 “skip_input”，“linear_input” 或 “auto_select” 。只有当 input_size == NUM_UNITS 时才允许 'skip_input'；'auto_select' 意味着'skip_input'，当input_size == num_units；否则，它意味着 “linear_input”。
+    direction='bidirectional', # 运行模型的方向模型，可以是“单向”(unidirectional)或“双向”
+    dropout=0.5, # 是否启用退出。当它为 0 时，退出被禁用。
+)
+init_state = []
+params = []
+output, final_states = cudnn_gru(x, init_state, params)
 
 # rnn打包。上面只是定义了网络，但是rnn调用时并不是直入直出的，而是按照顺序挨个输入Xi，同时输入X(i-1)的state，计算后输出Yi。最后把1-n的Yi打包在一起形成最终输出。
 # 下面就是自动挨个调用rnn_cell的打包方法。
-outputs1, final_states1 = tf.nn.static_rnn(cell, inputs, initial_state=last_state)  # shape(inputs)=[max_time, batch, input_size]，
+outputs1, final_states1 = tf.nn.static_bidirectional_rnn(cell, inputs, initial_state=last_state)  # shape(inputs)=[max_time, batch, input_size]，
 outputs2, final_states2 = tf.nn.dynamic_rnn(cell, inputs, initial_state=last_state, time_major=True)  # 跟static的区别貌似是:dyn接收的inputs每个time里的[batch,input_size]的input_size可以不同，static接收的必须是相同[batch, input_size]的输入。time_major=True->输入[max_time, batch, depth]，否则[batch, max_time, depth]，后者需要多转型两次
 
 '''模型数据变成与恢复'''

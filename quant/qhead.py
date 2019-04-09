@@ -8,7 +8,7 @@ sys.path.append('../lib')
 SELL = 0
 BUY = 1
 
-log.basicConfig(filename='log/learn.log', filemode="w", level=log.INFO, format='%(message)s')
+# log.basicConfig(filename='log/learn.log', filemode="w", level=log.INFO, format='%(message)s')
 
 
 def dt():
