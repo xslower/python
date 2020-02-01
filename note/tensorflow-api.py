@@ -33,6 +33,8 @@ tf.get_variable_scope()  # 貌似获取当前变量的scope
 tf.get_variable(name='a', shape=[2, 2], )  # 如果此scope下不存在某变量，则自动创建，如果存在则报错；
 with tf.variable_scope('reuse', reuse=tf.AUTO_REUSE):
     tf.get_variable(name='a')  # 此时若a存在，则把其返回
+# x=(a,b,1),y=(1,b,b),z则=(a,b,b)
+z = x + y # 张量相加，对应维要么某个=1,则逐个相加，要么维度得匹配。
 
 line = tf.compat.as_bytes('abcde') # 把str转为bytes对象
 tf.assign(x, y)  # 把y赋值给x
@@ -41,6 +43,7 @@ tf.matmul(x, y)  # 矩阵相乘，x与y的shape必须匹配，=2维时，就是[
 tf.argmax(y_label, axis=1)  # y_label是2维的，axis是操作哪一维。[[0,1,0],[1,0,0],[0,0,1]->[1,0,2]
 tf.norm(x, ord=1) # 计算x的p1范数
 tf.negative(x) # 取负
+tf.gather(weights, x) # 有点类似embbeding_lookup, 基于x的id序号，取出weights里对应的值拼起来
 y, idx = tf.unique(x) # 去重
 num_class = 5
 tf.one_hot(indices=y_label, depth=num_class)  # 把序列中每个值v变为一个向量，向量长度=depth，其中只有v所指的位置的值=1，其它都是0

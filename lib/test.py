@@ -63,7 +63,8 @@ def multi_insert():
 def base():
     r = Mytest.count()
     print(r)
-
+import jieba
+a = jieba.lcut()
 # base()
 # multi_insert()
 # insert()

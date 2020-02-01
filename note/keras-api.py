@@ -4,6 +4,7 @@ keras相关api
 '''tf内的keras封装'''
 import tensorflow as tf
 import keras as kr
+from keras.layers import Layer
 
 x = tf.Variable()
 
@@ -99,6 +100,21 @@ for ly in model.layers: # 可以获取model的所有层
 ly = model.get_layer(name='emb')
 w = ly.get_weights()[0] # 0是weights，1是bias
 ly.set_weights([w]) #
+
+'''层定义'''
+
+class xxx(Layer):
+    def __init__(self, out_dim):
+        self.out_dim = out_dim
+        super(Layer).__init__()
+
+    def build(self, input_shape):
+        # 构建权重
+        self.w = self.add_weight(shape=(input_shape[1], self.out_dim))
+
+    def call(self, inputs, **kwargs):
+        #执行此单元
+        return K.dot(inputs, self.w)
 
 '''
 mean_squared_error或mse

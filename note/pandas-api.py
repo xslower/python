@@ -3,7 +3,7 @@
 import pandas as pd
 import numpy as np
 filename = 'f'
-pd.read_csv(filename) #从CSV文件导入数据
+pd.read_csv(filename, header=None) #从CSV文件导入数据, 第一行默认为表头，直接是数据的必须header=None
 pd.read_table(filename)#从限定分隔符的文本文件导入数据
 pd.read_excel(filename)#从Excel文件导入数据
 query='select'
@@ -18,14 +18,17 @@ df = pd.DataFrame(dict)#从字典对象导入数据，Key是列名，Value是数
 
 '''导出数据'''
 
-df.to_csv(filename)#导出数据到CSV文件
+df.to_csv(filename, header=False, index=False) #导出数据到CSV文件，不要表头和索引
 df.to_excel(filename)#导出数据到Excel文件
 table_name = ''
-df.to_sql(table_name, connection_object)#导出数据到SQL表
 df.to_json(filename)#以Json格式导出数据到文本文件
-
+df.to_sql(table_name, connection_object)#导出数据到SQL表 示例如下
+import sqlalchemy
+cur = sqlalchemy.engine.create_engine("mysql+pymysql://rdsroot:RY0uUYQUeOLaF8qn@rm-uf6vo95pi21xv41u8.mysql.rds.aliyuncs.com/biaoqing_deal")
+ret = df.to_sql('user_img_show', cur, if_exists='append', index=False)
 '''创建测试对象'''
 
+arr = df.values #转为numpy输出
 df = pd.DataFrame(np.random.rand(20,5))#创建20行5列的随机数组成的DataFrame对象
 my_list = [1,2,3]
 sr = pd.Series(my_list)#从可迭代对象my_list创建一个Series对象
@@ -35,7 +38,7 @@ df.index = pd.date_range('1900/1/30', periods=df.shape[0])#增加一个日期索
 n=5
 df.head(n)#查看DataFrame对象的前n行
 df.tail(n)#查看DataFrame对象的最后n行
-df.shape()#查看行数和列数
+s = df.shape #查看行数和列数
 df.info()#查看索引、数据类型和内存信息
 df.describe()#查看数值型列的汇总统计
 sr.value_counts(dropna=False)#查看Series对象的唯一值和计数
@@ -52,7 +55,10 @@ a=df.iloc[0,:]#返回第一行
 a=df.iloc[0,0]#返回第一列的第一个元素
 a=df.values[:,:-1]#返回除了最后一列的其他列的所有数据
 df.query('[1, 2] not in c')#返回c列中不包含1，2的其他数据集
-
+a=df[df[col] > 0.5]#选择col列的值大于0.5的行
+a=df[df['uid'].isin(df['uid'])] # in
+df['xxx'] = 1 #相当于增加了一列=1
+df.index = [1,2,3,4] #指定索引值
 '''数据清理'''
 
 df.columns = ['a','b','c']#重命名列名
@@ -72,7 +78,6 @@ df.rename(index=lambda x: x + 1)#批量重命名索引
 
 '''数据处理#Filter、Sort和GroupBy'''
 
-a=df[df[col] > 0.5]#选择col列的值大于0.5的行
 df.sort_values(col1)#按照列col1排序数据，默认升序排列
 df.sort_values(col2, ascending=False)#按照列col1降序排列数据
 df.sort_values([col1,col2], ascending=[True,False])#先按列col1升序排列，后按col2降序排列数据
@@ -81,16 +86,22 @@ df.groupby(col).apply(lambda x : x.b.tolist()) #返回一个按列col进行分�
 df.groupby([col1,col2])#返回一个按多列进行分组的Groupby对象
 df2=df.groupby(col1)[col2]#返回按列col1进行分组后，列col2的均值
 df.pivot_table(index=col1, values=[col2,col3], aggfunc=max)#创建一个按列col1进行分组，并计算col2和col3的最大值的数据透视表
-df.groupby(col1).agg([np.mean, np.max, np.std, 'count'])#返回按列col1分组的所有列的均值
-df.groupby(col1, as_index=False).count() # 计数, as_index=False可以禁止把groupby的字段作为索引
+df.groupby(col1).agg([np.mean, np.max, np.std, 'count'])#返回按列col1分组的所有列的均值,
+df.groupby(col1, as_index=False).count() # 计数, as_index=False可以禁止把groupby的字段作为索引， 用agg时as_index=False不起效
+# groupby之后有个索引，如要去除则 df.reset_index(drop=True).style.applymap(color_negative_red)
+
 df.apply(np.mean)#对DataFrame中的每一列应用函数np.mean
-df.apply(np.max,axis=1)#对DataFrame中的每一行应用函数np.max
+df.apply(np.max,axis=1)#对DataFrame中的每一行应用函数np.max。axis=0是遍历列，=1是遍历行。
+# ps: 回调函数要么返回一个值，要么返回与列数等同的值, 要返回任意数量需要转为pd.Series()
+# ps: 按行遍历时可以通过row.name[1]获取groupby时变为索引的字段值
+df['uid'].agg(pd.Series.unique) # 返回去重的值
 
 '''数据合并'''
 
 df1.append(df2)#将df2中的行添加到df1的尾部
-df.concat([df1, df2],axis=1)#将df2中的列添加到df1的尾部
+df = pd.concat([df1, df2],axis=1)#axis=1横着拼，以index对齐；axis=0竖着拼，以columns对齐
 df1.join(df2,on=col1,how='inner')#对df1的列和df2的列执行SQL形式的join
+df.set_index('uid').join(df2.set_index('uid'), how='inner') #on好像不管用，手动设置index才ok
 
 '''数据统计'''
 

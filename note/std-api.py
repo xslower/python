@@ -6,7 +6,9 @@ a = [1,2,3]
 a.remove(2) # 去掉值为2的元素
 a.pop(1) # 去掉位置=1的元素
 del(a[1]) # 与上面等价
-
+# 去除两边的标点符号
+c = '!abc?'
+c.strip(" +.!/_,$%^*()\"\'|[]?~@#%&*—！，。？、￥…（）")
 iter([]) # 把一个可迭代的类型转为迭代器 ps:有个毛用，直接遍历不就ok了
 zip([1,2,3], [4,5,6]) # 同时迭代两个迭代器，输出[1,4],[2,5],[3,6]
 
@@ -19,6 +21,7 @@ from collections import defaultdict,Counter,deque, defaultdict, OrderedDict
 dd = defaultdict(list) # 带默认值的map，参数是一个类型. key取不到时返回类型的初始化值
 #(见：https://www.liaoxuefeng.com/wiki/0014316089557264a6b348958f449949df42a6d3a2e542c000/001431953239820157155d21c494e5786fce303f3018c86000)
 c = Counter([1,1,2]) #计数器类，可以统计string/list内各个元素的频率
+c.update(l) # 加上l的统计
 d = deque() #一个双向链表，头尾插入删除比list性能高，支持appendleft/popleft
 dd = defaultdict() #key不存在时可以返回默认值
 odo = OrderedDict() #遍历时按key的顺序访问
@@ -75,3 +78,46 @@ scr = difflib.SequenceMatcher(a=a, b=b).quick_ratio() # 计算两个字符串的
 from itertools import chain
 L=[ [1,2,3],[4,5,6],[7,8,9]]
 lst = list(chain(*L)) # 类似numpy的concatenate, 合并list
+
+#base64
+import base64
+a = '6ICB5p2/77yM5LuU6LWW5bqK5LqG77yM6LWW5rm/5LiJ5byg6KKr77yM5pyJ5L2g5rSX5LiL5LqG'
+b = base64.b64decode(a)
+print(str(b, 'utf-8'))
+
+'''excel/csv等'''
+import xlsxwriter
+# 给xls里加入图片
+book = xlsxwriter.Workbook('pic.xlsx')
+sheet = book.add_worksheet('demo')
+for j in range(100):
+    sheet.insert_image('D'+str(j), str(j)+'.jpg')
+book.close()
+# xls读写
+import xlrd
+xls = xlrd.open_workbook('data/major2pro.xlsx')
+table = xls.sheet_by_index(0)
+for i in range(1, table.nrows):
+    row = table.row_values(i)
+
+# csv读写
+import csv
+f = open('data/us_city.csv', 'r', encoding='utf-8')
+hdl = csv.reader(f)
+for row in hdl:
+    pass
+# 编码问题时，可以用记事本把csv的编码转为utf8保存，会发现容量大了30％
+
+import operator
+f = operator.itemgetter(2) # f(r)= return r[2], callback封装
+
+#anaconda
+
+
+
+
+#jieba
+import jieba, jieba.posseg
+a = jieba.lcut(a) # 分词
+jieba.load_userdict() #导入用户词库
+b = jieba.posseg.cut(a)
